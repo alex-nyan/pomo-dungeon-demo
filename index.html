@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Dungeon Gate Prototype</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="wrap">
+      <header class="hud">
+        <div class="title">Pomodoro Dungeon</div>
+        <div class="row">
+          <label>
+            Task
+            <input id="taskName" placeholder="Write report…" />
+          </label>
+          <label>
+            Minutes
+            <input id="taskMins" type="number" min="1" value="25" />
+          </label>
+          <button id="quickStart" class="btn">Quick Start</button>
+        </div>
+        <div class="hint">
+          Hover the gate to see it glow. Click the gate to begin.
+        </div>
+      </header>
+
+      <section class="stage" aria-label="Interactive dungeon gate scene">
+        <canvas id="scene" width="320" height="180"></canvas>
+        <!-- Accessible fallback -->
+        <button id="fallbackStart" class="sr-only">Start task</button>
+      </section>
+
+      <footer class="footer">
+        <span id="status">Idle</span>
+      </footer>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>
