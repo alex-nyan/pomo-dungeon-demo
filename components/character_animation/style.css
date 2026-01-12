@@ -1,0 +1,133 @@
+:root {
+  /* Sprite sheet details */
+  --frames: 6;
+  --frame-w: 150px;
+  --frame-h: 150px;
+
+  /* Your requested absolute path as a file URL (spaces encoded) */
+  --sheet-url: url("./monsters/flying-eye/Attack3.png");
+
+  /* Total sheet width = 150px * 6 = 900px */
+  --sheet-w: 900px;
+  --sheet-h: 150px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto,
+    Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+  background: #0b0f19;
+  color: #e8edf6;
+}
+
+.wrap {
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+h1 {
+  margin: 0 0 18px;
+  font-size: 24px;
+}
+
+.card {
+  background: #121a2a;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  padding: 16px;
+  margin: 14px 0;
+}
+
+.card h2 {
+  margin: 0 0 12px;
+  font-size: 16px;
+  font-weight: 700;
+  color: #dbe7ff;
+}
+
+.row {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.sprite,
+canvas {
+  width: var(--frame-w);
+  height: var(--frame-h);
+  image-rendering: pixelated; /* nice for pixel art */
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* CSS sprite animation */
+.css-sprite {
+  background-image: var(--sheet-url);
+  background-repeat: no-repeat;
+  background-size: var(--sheet-w) var(--sheet-h);
+  animation: attack var(--duration, 0.6s) steps(var(--frames)) infinite;
+}
+
+@keyframes attack {
+  from {
+    background-position: 0px 0px;
+  }
+  to {
+    background-position: calc(-1 * var(--sheet-w)) 0px;
+  }
+}
+
+.info {
+  min-width: 260px;
+  max-width: 520px;
+}
+
+p {
+  margin: 0 0 10px;
+  line-height: 1.35;
+  color: rgba(232, 237, 246, 0.9);
+}
+
+.control {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 10px 0;
+}
+
+input[type="range"] {
+  width: 220px;
+}
+
+.btn {
+  appearance: none;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.08);
+  color: #e8edf6;
+  padding: 8px 12px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.hint {
+  margin-top: 10px;
+  font-size: 13px;
+  color: rgba(232, 237, 246, 0.75);
+}
+
+.footer {
+  margin-top: 14px;
+  font-size: 13px;
+  color: rgba(232, 237, 246, 0.7);
+}

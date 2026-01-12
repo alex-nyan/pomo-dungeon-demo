@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sprite Sheet Animation Demo</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+
+  <body>
+    <main class="wrap">
+      <h1>Sprite Sheet Animation (6 frames)</h1>
+
+      <section class="card">
+        <h2>CSS Sprite (background-position + steps)</h2>
+        <div class="row">
+          <div
+            id="css-sprite"
+            class="sprite css-sprite"
+            aria-label="CSS sprite animation"
+          ></div>
+          <div class="info">
+            <p>
+              This animates by shifting the background image across 6 frames
+              using
+              <code>steps(6)</code>.
+            </p>
+            <label class="control">
+              Speed:
+              <input
+                id="cssSpeed"
+                type="range"
+                min="0.2"
+                max="2"
+                step="0.05"
+                value="0.6"
+              />
+              <span id="cssSpeedLabel">0.60s</span>
+            </label>
+            <button id="toggleCss" class="btn">Pause</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Canvas Sprite (drawImage cropping per frame)</h2>
+        <div class="row">
+          <canvas id="canvas" width="150" height="150"></canvas>
+          <div class="info">
+            <p>
+              This animates by drawing one frame at a time from the sprite sheet
+              onto a
+              <code>&lt;canvas&gt;</code>.
+            </p>
+            <label class="control">
+              FPS:
+              <input
+                id="fps"
+                type="range"
+                min="1"
+                max="30"
+                step="1"
+                value="12"
+              />
+              <span id="fpsLabel">12</span>
+            </label>
+            <button id="toggleCanvas" class="btn">Pause</button>
+            <p class="hint" id="status"></p>
+          </div>
+        </div>
+      </section>
+
+      <footer class="footer">
+        <p>
+          If your image doesn’t load using <code>file:///Users/...</code>, see
+          the fix at the bottom of <code>script.js</code> (and the note in this
+          chat).
+        </p>
+      </footer>
+    </main>
+
+    <script src="script.js"></script>
+  </body>
+</html>
