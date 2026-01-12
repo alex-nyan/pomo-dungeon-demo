@@ -3,6 +3,816 @@
 // Red Moon mode adds: rain + lightning, torches unlit, moon turns red.
 // Clicking the dungeon gate starts either a task session (tasks mode) or a stopwatch (stopwatch mode).
 
+// =============================================================================
+// DATA STRUCTURES & PERSISTENCE
+// =============================================================================
+
+// Available avatars (cosmetics)
+const AVATARS = {
+  knight_1: {
+    id: "knight_1",
+    name: "Knight I",
+    basePath: "assets/knight-character/Knight_1",
+    unlocked: true, // Default avatar, always unlocked
+    cost: 0,
+  },
+  knight_2: {
+    id: "knight_2",
+    name: "Knight II",
+    basePath: "assets/knight-character/Knight_2",
+    unlocked: false,
+    cost: 100,
+  },
+  knight_3: {
+    id: "knight_3",
+    name: "Knight III",
+    basePath: "assets/knight-character/Knight_3",
+    unlocked: false,
+    cost: 250,
+  },
+};
+
+// Available monster types
+const MONSTERS = {
+  goblin: {
+    id: "goblin",
+    name: "Goblin",
+    basePath: "designs/monsters/goblin",
+    sprite: "Attack3.png",
+  },
+  skeleton: {
+    id: "skeleton",
+    name: "Skeleton",
+    basePath: "designs/monsters/skeleton",
+    sprite: "Attack3.png",
+  },
+  mushroom: {
+    id: "mushroom",
+    name: "Mushroom",
+    basePath: "designs/monsters/mushroom",
+    sprite: "Attack3.png",
+  },
+  flying_eye: {
+    id: "flying_eye",
+    name: "Flying Eye",
+    basePath: "designs/monsters/flying-eye",
+    sprite: "Attack3.png",
+  },
+};
+
+// Priority levels for tasks
+const PRIORITY = {
+  LOW: "low",
+  MEDIUM: "medium",
+  HIGH: "high",
+  URGENT: "urgent",
+};
+
+// Priority display config
+const PRIORITY_CONFIG = {
+  [PRIORITY.LOW]: { label: "Low", color: "#4ade80" },
+  [PRIORITY.MEDIUM]: { label: "Medium", color: "#facc15" },
+  [PRIORITY.HIGH]: { label: "High", color: "#fb923c" },
+  [PRIORITY.URGENT]: { label: "URGENT", color: "#ef4444" },
+};
+
+// Default player state
+function createDefaultPlayer() {
+  return {
+    coins: 0,
+    currentAvatar: "knight_1",
+    unlockedAvatars: ["knight_1"],
+    totalTasksCompleted: 0,
+    totalTimeWorked: 0, // in milliseconds
+  };
+}
+
+// Create a new task
+function createTask({ name, timeEstimate, deadline, priority }) {
+  return {
+    id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
+    name: name || "Unnamed Task",
+    timeEstimate: timeEstimate || 25, // minutes
+    deadline: deadline || null, // ISO date string
+    priority: priority || PRIORITY.MEDIUM,
+    monsterType: "goblin", // Default monster
+    completed: false,
+    createdAt: new Date().toISOString(),
+    completedAt: null,
+    timeSpent: 0, // milliseconds spent on this task
+  };
+}
+
+// =============================================================================
+// LOCAL STORAGE PERSISTENCE
+// =============================================================================
+
+const STORAGE_KEYS = {
+  PLAYER: "pomoDungeon_player",
+  TASKS: "pomoDungeon_tasks",
+};
+
+// Load player data from localStorage
+function loadPlayer() {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEYS.PLAYER);
+    if (stored) {
+      const player = JSON.parse(stored);
+      // Merge with defaults to handle new properties
+      return { ...createDefaultPlayer(), ...player };
+    }
+  } catch (e) {
+    console.warn("Failed to load player data:", e);
+  }
+  return createDefaultPlayer();
+}
+
+// Save player data to localStorage
+function savePlayer(player) {
+  try {
+    localStorage.setItem(STORAGE_KEYS.PLAYER, JSON.stringify(player));
+  } catch (e) {
+    console.warn("Failed to save player data:", e);
+  }
+}
+
+// Load tasks from localStorage
+function loadTasks() {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEYS.TASKS);
+    if (stored) {
+      return JSON.parse(stored);
+    }
+  } catch (e) {
+    console.warn("Failed to load tasks:", e);
+  }
+  return [];
+}
+
+// Save tasks to localStorage
+function saveTasks(tasks) {
+  try {
+    localStorage.setItem(STORAGE_KEYS.TASKS, JSON.stringify(tasks));
+  } catch (e) {
+    console.warn("Failed to save tasks:", e);
+  }
+}
+
+// Add a new task
+function addTask(taskData) {
+  const tasks = loadTasks();
+  const newTask = createTask(taskData);
+  tasks.push(newTask);
+  saveTasks(tasks);
+  return newTask;
+}
+
+// Update an existing task
+function updateTask(taskId, updates) {
+  const tasks = loadTasks();
+  const index = tasks.findIndex((t) => t.id === taskId);
+  if (index !== -1) {
+    tasks[index] = { ...tasks[index], ...updates };
+    saveTasks(tasks);
+    return tasks[index];
+  }
+  return null;
+}
+
+// Delete a task
+function deleteTask(taskId) {
+  const tasks = loadTasks();
+  const filtered = tasks.filter((t) => t.id !== taskId);
+  saveTasks(filtered);
+  return filtered;
+}
+
+// Complete a task and award coins
+function completeTask(taskId) {
+  const tasks = loadTasks();
+  const task = tasks.find((t) => t.id === taskId);
+  if (task && !task.completed) {
+    task.completed = true;
+    task.completedAt = new Date().toISOString();
+    saveTasks(tasks);
+
+    // Award coins based on priority
+    const coinRewards = {
+      [PRIORITY.LOW]: 10,
+      [PRIORITY.MEDIUM]: 20,
+      [PRIORITY.HIGH]: 35,
+      [PRIORITY.URGENT]: 50,
+    };
+
+    const player = loadPlayer();
+    player.coins += coinRewards[task.priority] || 20;
+    player.totalTasksCompleted += 1;
+    player.totalTimeWorked += task.timeSpent;
+    savePlayer(player);
+
+    return { task, coinsEarned: coinRewards[task.priority] };
+  }
+  return null;
+}
+
+// Unlock an avatar
+function unlockAvatar(avatarId) {
+  const avatar = AVATARS[avatarId];
+  if (!avatar) return { success: false, error: "Avatar not found" };
+
+  const player = loadPlayer();
+  if (player.unlockedAvatars.includes(avatarId)) {
+    return { success: false, error: "Already unlocked" };
+  }
+  if (player.coins < avatar.cost) {
+    return { success: false, error: "Not enough coins" };
+  }
+
+  player.coins -= avatar.cost;
+  player.unlockedAvatars.push(avatarId);
+  savePlayer(player);
+  return { success: true, player };
+}
+
+// Set current avatar
+function setCurrentAvatar(avatarId) {
+  const player = loadPlayer();
+  if (!player.unlockedAvatars.includes(avatarId)) {
+    return { success: false, error: "Avatar not unlocked" };
+  }
+  player.currentAvatar = avatarId;
+  savePlayer(player);
+  return { success: true, player };
+}
+
+// Get incomplete tasks sorted by priority
+function getActiveTasks() {
+  const tasks = loadTasks();
+  const priorityOrder = {
+    [PRIORITY.URGENT]: 0,
+    [PRIORITY.HIGH]: 1,
+    [PRIORITY.MEDIUM]: 2,
+    [PRIORITY.LOW]: 3,
+  };
+  return tasks
+    .filter((t) => !t.completed)
+    .sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority]);
+}
+
+// Initialize game data on load
+const gameData = {
+  player: loadPlayer(),
+  tasks: loadTasks(),
+};
+
+// =============================================================================
+// SCREEN NAVIGATION
+// =============================================================================
+
+const SCREENS = {
+  HOME: "screen-home",
+  TASKS: "screen-tasks",
+  BATTLE: "screen-battle",
+  COLLECTIONS: "screen-collections",
+};
+
+let currentScreen = SCREENS.HOME;
+
+function showScreen(screenId) {
+  document.querySelectorAll(".screen").forEach((s) => s.classList.remove("active"));
+  document.getElementById(screenId)?.classList.add("active");
+  currentScreen = screenId;
+
+  // Update UI based on screen
+  if (screenId === SCREENS.HOME) {
+    updateHomeUI();
+  } else if (screenId === SCREENS.TASKS) {
+    renderTaskList();
+  } else if (screenId === SCREENS.COLLECTIONS) {
+    renderCollections();
+  }
+}
+
+function updateHomeUI() {
+  const player = loadPlayer();
+  const coinEl = document.getElementById("coinCount");
+  if (coinEl) coinEl.textContent = player.coins;
+
+  // Update body class for mode
+  document.body.classList.toggle("stopwatch-mode", mode === MODE.STOPWATCH);
+}
+
+// =============================================================================
+// SPRITE LOADING
+// =============================================================================
+
+const spriteCache = {};
+
+function loadSprite(path) {
+  if (spriteCache[path]) return Promise.resolve(spriteCache[path]);
+
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      spriteCache[path] = img;
+      resolve(img);
+    };
+    img.onerror = reject;
+    img.src = path;
+  });
+}
+
+// Preload player avatar sprites
+async function preloadAvatarSprites() {
+  const player = loadPlayer();
+  const avatar = AVATARS[player.currentAvatar];
+  if (avatar) {
+    try {
+      await loadSprite(`${avatar.basePath}/Idle.png`);
+    } catch (e) {
+      console.warn("Failed to preload avatar sprite:", e);
+    }
+  }
+}
+
+// =============================================================================
+// PLAYER AVATAR ON HOME CANVAS
+// =============================================================================
+
+const playerAvatar = {
+  x: 45,
+  y: 95,
+  w: 50,
+  h: 60,
+  hover: false,
+  sprite: null,
+  frameIndex: 0,
+  frameCount: 6,
+  frameTimer: 0,
+  frameDelay: 0.15,
+};
+
+async function loadPlayerAvatarSprite() {
+  const player = loadPlayer();
+  const avatar = AVATARS[player.currentAvatar] || AVATARS.knight_1;
+  try {
+    playerAvatar.sprite = await loadSprite(`${avatar.basePath}/Idle.png`);
+  } catch (e) {
+    console.warn("Failed to load avatar sprite:", e);
+    playerAvatar.sprite = null;
+  }
+}
+
+function drawPlayerAvatar(time, dt) {
+  if (!playerAvatar.sprite) return;
+
+  // Animate sprite
+  playerAvatar.frameTimer += dt;
+  if (playerAvatar.frameTimer >= playerAvatar.frameDelay) {
+    playerAvatar.frameTimer = 0;
+    playerAvatar.frameIndex = (playerAvatar.frameIndex + 1) % playerAvatar.frameCount;
+  }
+
+  const spriteW = playerAvatar.sprite.width / playerAvatar.frameCount;
+  const spriteH = playerAvatar.sprite.height;
+  const srcX = playerAvatar.frameIndex * spriteW;
+
+  // Hover glow
+  if (playerAvatar.hover) {
+    ctx.globalAlpha = 0.15 + 0.1 * Math.sin(time * 5);
+    ctx.fillStyle = "#64ffb6";
+    ctx.beginPath();
+    ctx.ellipse(
+      playerAvatar.x + playerAvatar.w / 2,
+      playerAvatar.y + playerAvatar.h - 5,
+      30,
+      12,
+      0,
+      0,
+      Math.PI * 2
+    );
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+
+  // Draw shadow
+  ctx.globalAlpha = 0.3;
+  ctx.fillStyle = "#000";
+  ctx.beginPath();
+  ctx.ellipse(
+    playerAvatar.x + playerAvatar.w / 2,
+    playerAvatar.y + playerAvatar.h + 2,
+    18,
+    6,
+    0,
+    0,
+    Math.PI * 2
+  );
+  ctx.fill();
+  ctx.globalAlpha = 1;
+
+  // Draw sprite
+  ctx.drawImage(
+    playerAvatar.sprite,
+    srcX,
+    0,
+    spriteW,
+    spriteH,
+    playerAvatar.x,
+    playerAvatar.y,
+    playerAvatar.w,
+    playerAvatar.h
+  );
+}
+
+function isInAvatar(px, py) {
+  return (
+    px >= playerAvatar.x &&
+    px <= playerAvatar.x + playerAvatar.w &&
+    py >= playerAvatar.y &&
+    py <= playerAvatar.y + playerAvatar.h
+  );
+}
+
+// Check if clicking inside open dungeon
+function isInOpenDungeon(px, py) {
+  if (gate.openT < 0.5) return false;
+  const d = doorRect();
+  return px >= d.x && px <= d.x + d.w && py >= d.y && py <= d.y + d.h;
+}
+
+// =============================================================================
+// ADD TASK MODAL
+// =============================================================================
+
+const addTaskModal = document.getElementById("addTaskModal");
+const addTaskForm = document.getElementById("addTaskForm");
+const addTaskBtn = document.getElementById("addTaskBtn");
+const tasksAddBtn = document.getElementById("tasksAddBtn");
+const emptyAddTaskBtn = document.getElementById("emptyAddTask");
+const closeModalBtn = document.getElementById("closeModalBtn");
+
+function openAddTaskModal() {
+  addTaskModal?.classList.remove("hidden");
+  document.getElementById("modalTaskName")?.focus();
+}
+
+function closeAddTaskModal() {
+  addTaskModal?.classList.add("hidden");
+  addTaskForm?.reset();
+}
+
+addTaskBtn?.addEventListener("click", openAddTaskModal);
+tasksAddBtn?.addEventListener("click", openAddTaskModal);
+emptyAddTaskBtn?.addEventListener("click", openAddTaskModal);
+closeModalBtn?.addEventListener("click", closeAddTaskModal);
+
+addTaskModal?.addEventListener("click", (e) => {
+  if (e.target === addTaskModal) closeAddTaskModal();
+});
+
+addTaskForm?.addEventListener("submit", (e) => {
+  e.preventDefault();
+
+  const name = document.getElementById("modalTaskName")?.value?.trim();
+  const timeEstimate = parseInt(document.getElementById("modalTimeEstimate")?.value || "25", 10);
+  const deadline = document.getElementById("modalDeadline")?.value || null;
+  const priority = document.getElementById("modalPriority")?.value || "medium";
+
+  if (!name) return;
+
+  addTask({ name, timeEstimate, deadline, priority });
+  gameData.tasks = loadTasks();
+  closeAddTaskModal();
+
+  if (currentScreen === SCREENS.TASKS) {
+    renderTaskList();
+  }
+
+  setStatus(`Task "${name}" created!`);
+});
+
+// =============================================================================
+// TASK LIST SCREEN
+// =============================================================================
+
+let taskFilter = "active";
+
+function renderTaskList() {
+  const taskListEl = document.getElementById("taskList");
+  const emptyEl = document.getElementById("emptyTasks");
+  if (!taskListEl || !emptyEl) return;
+
+  const tasks = loadTasks();
+  let filteredTasks = tasks;
+
+  if (taskFilter === "active") {
+    filteredTasks = tasks.filter((t) => !t.completed);
+  } else if (taskFilter === "completed") {
+    filteredTasks = tasks.filter((t) => t.completed);
+  }
+
+  // Sort by priority
+  const priorityOrder = { urgent: 0, high: 1, medium: 2, low: 3 };
+  filteredTasks.sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority]);
+
+  if (filteredTasks.length === 0) {
+    taskListEl.innerHTML = "";
+    emptyEl.classList.remove("hidden");
+    return;
+  }
+
+  emptyEl.classList.add("hidden");
+
+  taskListEl.innerHTML = filteredTasks
+    .map((task) => {
+      const deadlineStr = task.deadline
+        ? new Date(task.deadline).toLocaleDateString()
+        : "No deadline";
+      return `
+        <div class="task-card ${task.completed ? "completed" : ""}" data-task-id="${task.id}">
+          <div class="task-priority-indicator ${task.priority}"></div>
+          <div class="task-info">
+            <div class="task-name">${escapeHtml(task.name)}</div>
+            <div class="task-meta">
+              <span>⏱ ${task.timeEstimate} min</span>
+              <span>📅 ${deadlineStr}</span>
+            </div>
+          </div>
+          <span class="priority-badge ${task.priority}">${PRIORITY_CONFIG[task.priority]?.label || task.priority}</span>
+          <div class="task-actions">
+            ${!task.completed ? `<button class="task-action-btn start-btn" data-task-id="${task.id}" title="Start">▶</button>` : ""}
+            <button class="task-action-btn delete" data-task-id="${task.id}" title="Delete">🗑</button>
+          </div>
+        </div>
+      `;
+    })
+    .join("");
+
+  // Add click handlers
+  taskListEl.querySelectorAll(".task-card").forEach((card) => {
+    card.addEventListener("click", (e) => {
+      if (e.target.closest(".task-action-btn")) return;
+      const taskId = card.dataset.taskId;
+      const task = tasks.find((t) => t.id === taskId);
+      if (task && !task.completed) {
+        startBattle(task);
+      }
+    });
+  });
+
+  taskListEl.querySelectorAll(".start-btn").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const taskId = btn.dataset.taskId;
+      const task = tasks.find((t) => t.id === taskId);
+      if (task) startBattle(task);
+    });
+  });
+
+  taskListEl.querySelectorAll(".delete").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const taskId = btn.dataset.taskId;
+      deleteTask(taskId);
+      gameData.tasks = loadTasks();
+      renderTaskList();
+    });
+  });
+}
+
+function escapeHtml(str) {
+  const div = document.createElement("div");
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+// Filter buttons
+document.querySelectorAll(".filter-btn").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".filter-btn").forEach((b) => b.classList.remove("active"));
+    btn.classList.add("active");
+    taskFilter = btn.dataset.filter;
+    renderTaskList();
+  });
+});
+
+// Back button
+document.getElementById("tasksBackBtn")?.addEventListener("click", () => showScreen(SCREENS.HOME));
+
+// =============================================================================
+// BATTLE SCREEN
+// =============================================================================
+
+const battleState = {
+  task: null,
+  startTime: 0,
+  duration: 0,
+  elapsed: 0,
+  paused: false,
+  pauseStart: 0,
+  totalPaused: 0,
+  completed: false,
+};
+
+async function startBattle(task) {
+  battleState.task = task;
+  battleState.duration = task.timeEstimate * 60 * 1000;
+  battleState.startTime = performance.now();
+  battleState.elapsed = 0;
+  battleState.paused = false;
+  battleState.totalPaused = 0;
+  battleState.completed = false;
+
+  // Update UI
+  document.getElementById("battleTaskName").textContent = task.name;
+  document.getElementById("monsterName").textContent = MONSTERS[task.monsterType]?.name || "Goblin";
+  document.getElementById("victoryOverlay")?.classList.add("hidden");
+
+  // Load sprites
+  const player = loadPlayer();
+  const avatar = AVATARS[player.currentAvatar] || AVATARS.knight_1;
+  const monster = MONSTERS[task.monsterType] || MONSTERS.goblin;
+
+  const playerSpriteEl = document.getElementById("playerSprite");
+  const monsterSpriteEl = document.getElementById("monsterSprite");
+
+  if (playerSpriteEl) playerSpriteEl.src = `${avatar.basePath}/Idle.png`;
+  if (monsterSpriteEl) monsterSpriteEl.src = `${monster.basePath}/${monster.sprite}`;
+
+  showScreen(SCREENS.BATTLE);
+  updateBattleTimer();
+}
+
+function updateBattleTimer() {
+  if (currentScreen !== SCREENS.BATTLE || battleState.completed) return;
+
+  const now = performance.now();
+  if (!battleState.paused) {
+    battleState.elapsed = now - battleState.startTime - battleState.totalPaused;
+  }
+
+  const remaining = Math.max(0, battleState.duration - battleState.elapsed);
+  const progress = battleState.elapsed / battleState.duration;
+
+  // Update timer display
+  const timerEl = document.getElementById("battleTimerDisplay");
+  if (timerEl) timerEl.textContent = formatTime(remaining);
+
+  // Update health bars
+  const playerHealth = document.getElementById("playerHealthFill");
+  const monsterHealth = document.getElementById("monsterHealthFill");
+
+  if (playerHealth) playerHealth.style.width = "100%";
+  if (monsterHealth) monsterHealth.style.width = `${Math.max(0, (1 - progress) * 100)}%`;
+
+  if (remaining <= 0 && !battleState.completed) {
+    completeBattle();
+  } else {
+    requestAnimationFrame(updateBattleTimer);
+  }
+}
+
+function completeBattle() {
+  if (battleState.completed) return;
+  battleState.completed = true;
+
+  // Update task
+  const result = completeTask(battleState.task.id);
+  gameData.player = loadPlayer();
+  gameData.tasks = loadTasks();
+
+  // Show victory
+  const victoryOverlay = document.getElementById("victoryOverlay");
+  const victoryCoins = document.getElementById("victoryCoins");
+  if (victoryOverlay) victoryOverlay.classList.remove("hidden");
+  if (victoryCoins) victoryCoins.textContent = `+${result?.coinsEarned || 20}`;
+}
+
+function exitBattle() {
+  if (battleState.task && !battleState.completed) {
+    // Save time spent
+    updateTask(battleState.task.id, { timeSpent: battleState.elapsed });
+    gameData.tasks = loadTasks();
+  }
+  showScreen(SCREENS.TASKS);
+}
+
+// Battle controls
+document.getElementById("battleExitBtn")?.addEventListener("click", exitBattle);
+
+document.getElementById("battlePauseBtn")?.addEventListener("click", () => {
+  const btn = document.getElementById("battlePauseBtn");
+  if (battleState.paused) {
+    battleState.totalPaused += performance.now() - battleState.pauseStart;
+    battleState.paused = false;
+    if (btn) btn.textContent = "⏸ Pause";
+    updateBattleTimer();
+  } else {
+    battleState.paused = true;
+    battleState.pauseStart = performance.now();
+    if (btn) btn.textContent = "▶ Resume";
+  }
+});
+
+document.getElementById("battleCompleteBtn")?.addEventListener("click", completeBattle);
+
+document.getElementById("victoryCloseBtn")?.addEventListener("click", () => {
+  showScreen(SCREENS.TASKS);
+});
+
+// =============================================================================
+// COLLECTIONS SCREEN
+// =============================================================================
+
+function renderCollections() {
+  const player = loadPlayer();
+
+  // Update coins
+  const coinsEl = document.getElementById("collectionsCoins");
+  if (coinsEl) coinsEl.textContent = player.coins;
+
+  // Current avatar
+  const currentAvatar = AVATARS[player.currentAvatar] || AVATARS.knight_1;
+  const currentAvatarImg = document.getElementById("currentAvatarImg");
+  if (currentAvatarImg) currentAvatarImg.src = `${currentAvatar.basePath}/Idle.png`;
+
+  // Avatar grid
+  const avatarGrid = document.getElementById("avatarGrid");
+  if (avatarGrid) {
+    avatarGrid.innerHTML = Object.values(AVATARS)
+      .map((avatar) => {
+        const isUnlocked = player.unlockedAvatars.includes(avatar.id);
+        const isSelected = player.currentAvatar === avatar.id;
+        return `
+          <div class="avatar-card ${isSelected ? "selected" : ""} ${!isUnlocked ? "locked" : ""}" 
+               data-avatar-id="${avatar.id}">
+            <img class="avatar-card-img" src="${avatar.basePath}/Idle.png" alt="${avatar.name}" />
+            <div class="avatar-card-name">${avatar.name}</div>
+            <div class="avatar-card-cost">
+              ${
+                isUnlocked
+                  ? isSelected
+                    ? "✓ Equipped"
+                    : "Click to equip"
+                  : `<span class="coin-icon">🪙</span> ${avatar.cost}`
+              }
+            </div>
+          </div>
+        `;
+      })
+      .join("");
+
+    // Click handlers
+    avatarGrid.querySelectorAll(".avatar-card").forEach((card) => {
+      card.addEventListener("click", () => {
+        const avatarId = card.dataset.avatarId;
+        const avatar = AVATARS[avatarId];
+        const player = loadPlayer();
+
+        if (player.unlockedAvatars.includes(avatarId)) {
+          // Equip
+          setCurrentAvatar(avatarId);
+          loadPlayerAvatarSprite();
+          renderCollections();
+        } else if (player.coins >= avatar.cost) {
+          // Buy
+          const result = unlockAvatar(avatarId);
+          if (result.success) {
+            setCurrentAvatar(avatarId);
+            loadPlayerAvatarSprite();
+            renderCollections();
+          }
+        } else {
+          setStatus(`Need ${avatar.cost - player.coins} more coins!`);
+        }
+      });
+    });
+  }
+
+  // Stats
+  const statTasks = document.getElementById("statTasksCompleted");
+  const statTime = document.getElementById("statTimeWorked");
+  const statCoins = document.getElementById("statCoinsEarned");
+
+  if (statTasks) statTasks.textContent = player.totalTasksCompleted;
+  if (statTime) {
+    const hours = Math.floor(player.totalTimeWorked / 3600000);
+    const mins = Math.floor((player.totalTimeWorked % 3600000) / 60000);
+    statTime.textContent = hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
+  }
+  if (statCoins) statCoins.textContent = player.coins;
+}
+
+// Back button
+document.getElementById("collectionsBackBtn")?.addEventListener("click", () => {
+  showScreen(SCREENS.HOME);
+});
+
+// =============================================================================
+// END DATA STRUCTURES
+// =============================================================================
+
 const canvas = document.getElementById("scene");
 const ctx = canvas?.getContext("2d", { alpha: true });
 
@@ -137,11 +947,12 @@ function setMode(nextMode) {
   gate.openT = 0;
   gate.hover = false;
   updateArmedState();
+  updateHomeUI();
 
   if (mode === MODE.STOPWATCH) {
     setStatus("Stopwatch mode (red moon): click dungeon to start/stop");
   } else {
-    setStatus("Tasks mode: type a task, then click the doors");
+    setStatus("Click the avatar or dungeon to explore!");
   }
 }
 
@@ -213,6 +1024,8 @@ canvas?.addEventListener("mousemove", (e) => {
   const my = (e.clientY - rect.top) * scaleY;
 
   const overMoon = isInMoon(mx, my);
+  const overAvatar = isInAvatar(mx, my);
+  const overOpenDungeon = isInOpenDungeon(mx, my);
   const overGate =
     mx >= gate.x &&
     mx <= gate.x + gate.w &&
@@ -221,12 +1034,14 @@ canvas?.addEventListener("mousemove", (e) => {
 
   gate.hover =
     overGate && !gate.opening && !(mode === MODE.TASKS && session.active);
+  playerAvatar.hover = overAvatar;
 
-  canvas.style.cursor = overMoon || gate.hover ? "pointer" : "default";
+  canvas.style.cursor = overMoon || gate.hover || overAvatar || overOpenDungeon ? "pointer" : "default";
 });
 
 canvas?.addEventListener("mouseleave", () => {
   gate.hover = false;
+  playerAvatar.hover = false;
   canvas.style.cursor = "default";
 });
 
@@ -237,19 +1052,35 @@ canvas?.addEventListener("click", (e) => {
   const mx = (e.clientX - rect.left) * scaleX;
   const my = (e.clientY - rect.top) * scaleY;
 
-  // 1) Moon click toggles mode
+  // 1) Avatar click goes to collections
+  if (isInAvatar(mx, my)) {
+    showScreen(SCREENS.COLLECTIONS);
+    return;
+  }
+
+  // 2) Moon click toggles mode
   if (isInMoon(mx, my)) {
     toggleMode();
     return;
   }
 
-  // 2) Gate click starts appropriate session
-  if (!gate.hover) return;
+  // 3) Open dungeon click goes to tasks (in tasks mode)
+  if (mode === MODE.TASKS && isInOpenDungeon(mx, my)) {
+    showScreen(SCREENS.TASKS);
+    return;
+  }
 
-  if (mode === MODE.TASKS) {
-    if (!session.active && !gate.opening) startTasksSession();
-  } else {
-    toggleStopwatchSession();
+  // 4) Gate click - in tasks mode, open gate then show tasks
+  if (gate.hover) {
+    if (mode === MODE.TASKS) {
+      if (!session.active && !gate.opening) {
+        gate.opening = true;
+        gate.openT = 0;
+        for (let i = 0; i < 10; i++) spawnMist(true);
+      }
+    } else {
+      toggleStopwatchSession();
+    }
   }
 });
 
@@ -725,6 +1556,9 @@ function render(dt) {
   drawBackground(t);
   drawAmbience(t);
 
+  // Draw player avatar (left of gate)
+  drawPlayerAvatar(t, dt);
+
   // torches: unlit in red moon mode
   const torchesLit = mode === MODE.TASKS;
   const torchIntensity = clamp(
@@ -782,9 +1616,11 @@ function loop(now) {
 }
 
 // init
-function init() {
+async function init() {
   initRain();
-  setStatus("Tasks mode: click the moon to switch to stopwatch");
+  await loadPlayerAvatarSprite();
+  updateHomeUI();
+  setStatus("Click the avatar or dungeon to explore!");
   updateArmedState();
   requestAnimationFrame(loop);
 }

@@ -3,40 +3,205 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Dungeon Gate Prototype</title>
+    <title>Pomodoro Dungeon</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <main class="wrap">
-      <header class="hud">
-        <div class="title">Pomodoro Dungeon</div>
-        <div class="row">
-          <label>
-            Task
-            <input id="taskName" placeholder="Write report…" />
-          </label>
-          <label>
-            Minutes
-            <input id="taskMins" type="number" min="1" value="25" />
-          </label>
-          <button id="modeToggle" class="btn" type="button">Mode: Tasks</button>
-          <button id="quickStart" class="btn">Quick Start</button>
-        </div>
-        <div class="hint">
-          Hover the gate to see it glow. Click the gate to begin.
-        </div>
-      </header>
+    <!-- ======================= HOME SCREEN ======================= -->
+    <main id="screen-home" class="screen active">
+      <div class="wrap">
+        <header class="hud">
+          <div class="hud-top">
+            <button id="addTaskBtn" class="btn btn-add-task">+ Add Task</button>
+            <div class="title">Pomodoro Dungeon</div>
+            <div class="coins-display">
+              <span class="coin-icon">🪙</span>
+              <span id="coinCount">0</span>
+            </div>
+          </div>
+          <div class="hint" id="homeHint">
+            Click the avatar to customize. Click the dungeon to view tasks.
+          </div>
+        </header>
 
-      <section class="stage" aria-label="Interactive dungeon gate scene">
-        <canvas id="scene" width="320" height="180"></canvas>
-        <!-- Accessible fallback -->
-        <button id="fallbackStart" class="sr-only">Start task</button>
-      </section>
+        <section class="stage" aria-label="Interactive dungeon gate scene">
+          <canvas id="scene" width="320" height="180"></canvas>
+          <button id="fallbackStart" class="sr-only">Start task</button>
+        </section>
 
-      <footer class="footer">
-        <span id="status">Idle</span>
-      </footer>
+        <footer class="footer">
+          <span id="status">Idle</span>
+        </footer>
+      </div>
+
+      <!-- Add Task Modal -->
+      <div id="addTaskModal" class="modal-overlay hidden">
+        <div class="modal add-task-modal">
+          <div class="modal-header">
+            <h2>Add New Task</h2>
+            <button id="closeModalBtn" class="modal-close">&times;</button>
+          </div>
+          <form id="addTaskForm" class="modal-form">
+            <label class="form-group">
+              <span>Task Name</span>
+              <input type="text" id="modalTaskName" placeholder="What needs to be done?" required />
+            </label>
+            <label class="form-group">
+              <span>Time Estimate (minutes)</span>
+              <input type="number" id="modalTimeEstimate" min="1" max="480" value="25" required />
+            </label>
+            <label class="form-group">
+              <span>Deadline</span>
+              <input type="datetime-local" id="modalDeadline" />
+            </label>
+            <label class="form-group">
+              <span>Priority</span>
+              <select id="modalPriority" required>
+                <option value="low">Low</option>
+                <option value="medium" selected>Medium</option>
+                <option value="high">High</option>
+                <option value="urgent">URGENT</option>
+              </select>
+            </label>
+            <button type="submit" class="btn btn-primary">Create Task</button>
+          </form>
+        </div>
+      </div>
     </main>
+
+    <!-- ======================= TASK OVERVIEW SCREEN ======================= -->
+    <section id="screen-tasks" class="screen">
+      <div class="wrap">
+        <header class="screen-header">
+          <button id="tasksBackBtn" class="btn btn-back">← Back</button>
+          <h1>Quest Board</h1>
+          <button id="tasksAddBtn" class="btn btn-add-task">+ Add Task</button>
+        </header>
+
+        <div class="task-filters">
+          <button class="filter-btn active" data-filter="active">Active</button>
+          <button class="filter-btn" data-filter="completed">Completed</button>
+          <button class="filter-btn" data-filter="all">All</button>
+        </div>
+
+        <div id="taskList" class="task-list">
+          <!-- Tasks will be rendered here -->
+        </div>
+
+        <div id="emptyTasks" class="empty-state hidden">
+          <div class="empty-icon">⚔️</div>
+          <p>No quests available</p>
+          <button class="btn btn-primary" id="emptyAddTask">Add your first quest</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ======================= DUNGEON BATTLE SCREEN ======================= -->
+    <section id="screen-battle" class="screen">
+      <div class="battle-arena">
+        <header class="battle-header">
+          <button id="battleExitBtn" class="btn btn-back">✕ Flee</button>
+          <div class="battle-timer">
+            <span id="battleTimerDisplay">25:00</span>
+          </div>
+          <div class="battle-task-name" id="battleTaskName">Task Name</div>
+        </header>
+
+        <div class="battle-stage">
+          <div class="combatant player-side">
+            <div class="health-bar-container">
+              <div class="health-bar player-health">
+                <div class="health-fill" id="playerHealthFill" style="width: 100%"></div>
+              </div>
+              <span class="health-label">YOU</span>
+            </div>
+            <div class="sprite-container">
+              <img id="playerSprite" class="battle-sprite player-sprite" alt="Player" />
+            </div>
+          </div>
+
+          <div class="battle-vs">VS</div>
+
+          <div class="combatant monster-side">
+            <div class="health-bar-container">
+              <div class="health-bar monster-health">
+                <div class="health-fill" id="monsterHealthFill" style="width: 100%"></div>
+              </div>
+              <span class="health-label" id="monsterName">Goblin</span>
+            </div>
+            <div class="sprite-container">
+              <img id="monsterSprite" class="battle-sprite monster-sprite" alt="Monster" />
+            </div>
+          </div>
+        </div>
+
+        <div class="battle-controls">
+          <button id="battlePauseBtn" class="btn btn-battle">⏸ Pause</button>
+          <button id="battleCompleteBtn" class="btn btn-primary btn-battle">✓ Complete</button>
+        </div>
+
+        <!-- Victory Overlay -->
+        <div id="victoryOverlay" class="victory-overlay hidden">
+          <div class="victory-content">
+            <h2>⚔️ Victory! ⚔️</h2>
+            <p>Quest completed!</p>
+            <div class="victory-reward">
+              <span class="coin-icon">🪙</span>
+              <span id="victoryCoins">+20</span>
+            </div>
+            <button id="victoryCloseBtn" class="btn btn-primary">Continue</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ======================= COLLECTIONS ROOM SCREEN ======================= -->
+    <section id="screen-collections" class="screen">
+      <div class="wrap">
+        <header class="screen-header">
+          <button id="collectionsBackBtn" class="btn btn-back">← Back</button>
+          <h1>Collections</h1>
+          <div class="coins-display">
+            <span class="coin-icon">🪙</span>
+            <span id="collectionsCoins">0</span>
+          </div>
+        </header>
+
+        <div class="collections-content">
+          <div class="current-avatar-section">
+            <h2>Current Avatar</h2>
+            <div class="current-avatar-display">
+              <img id="currentAvatarImg" class="avatar-preview" alt="Current Avatar" />
+            </div>
+          </div>
+
+          <div class="avatar-grid-section">
+            <h2>Available Avatars</h2>
+            <div id="avatarGrid" class="avatar-grid">
+              <!-- Avatar cards will be rendered here -->
+            </div>
+          </div>
+
+          <div class="stats-section">
+            <h2>Stats</h2>
+            <div class="stats-grid">
+              <div class="stat-card">
+                <div class="stat-value" id="statTasksCompleted">0</div>
+                <div class="stat-label">Quests Completed</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-value" id="statTimeWorked">0h</div>
+                <div class="stat-label">Time Worked</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-value" id="statCoinsEarned">0</div>
+                <div class="stat-label">Total Coins</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
 
     <script src="app.js"></script>
   </body>
