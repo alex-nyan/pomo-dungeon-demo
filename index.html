@@ -4,34 +4,29 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Pomodoro Dungeon</title>
+    <!-- Medieval Font from Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=MedievalSharp&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
     <!-- ======================= HOME SCREEN ======================= -->
     <main id="screen-home" class="screen active">
-      <div class="wrap">
-        <header class="hud">
-          <div class="hud-top">
-            <button id="addTaskBtn" class="btn btn-add-task">+ Add Task</button>
-            <div class="title">Pomodoro Dungeon</div>
-            <div class="coins-display">
-              <span class="coin-icon">🪙</span>
-              <span id="coinCount">0</span>
-            </div>
+      <div class="fullscreen-canvas-container">
+        <canvas id="scene" width="320" height="180"></canvas>
+        
+        <!-- Overlay UI elements -->
+        <div class="canvas-overlay-ui">
+          <button id="addTaskBtn" class="btn-medieval">+ Add Quest</button>
+          <div class="coins-display" id="homeCoinsDisplay">
+            <span class="coin-icon">🪙</span>
+            <span id="coinCount">0</span>
           </div>
-          <div class="hint" id="homeHint">
-            Click the avatar to customize. Click the dungeon to view tasks.
-          </div>
-        </header>
-
-        <section class="stage" aria-label="Interactive dungeon gate scene">
-          <canvas id="scene" width="320" height="180"></canvas>
-          <button id="fallbackStart" class="sr-only">Start task</button>
-        </section>
-
-        <footer class="footer">
-          <span id="status">Idle</span>
-        </footer>
+        </div>
+        
+        <button id="fallbackStart" class="sr-only">Start task</button>
+        <span id="status" class="sr-only">Idle</span>
       </div>
 
       <!-- Add Task Modal -->

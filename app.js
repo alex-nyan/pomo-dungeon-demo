@@ -298,7 +298,7 @@ function updateHomeUI() {
   const coinEl = document.getElementById("coinCount");
   if (coinEl) coinEl.textContent = player.coins;
 
-  // Update body class for mode
+  // Toggle stopwatch mode class (hides Add Quest button in red moon mode)
   document.body.classList.toggle("stopwatch-mode", mode === MODE.STOPWATCH);
 }
 
@@ -346,10 +346,7 @@ const playerAvatar = {
   h: 60,
   hover: false,
   sprite: null,
-  frameIndex: 0,
-  frameCount: 6,
-  frameTimer: 0,
-  frameDelay: 0.15,
+  frameCount: 4, // Idle spritesheet has 4 frames
 };
 
 async function loadPlayerAvatarSprite() {
@@ -366,16 +363,10 @@ async function loadPlayerAvatarSprite() {
 function drawPlayerAvatar(time, dt) {
   if (!playerAvatar.sprite) return;
 
-  // Animate sprite
-  playerAvatar.frameTimer += dt;
-  if (playerAvatar.frameTimer >= playerAvatar.frameDelay) {
-    playerAvatar.frameTimer = 0;
-    playerAvatar.frameIndex = (playerAvatar.frameIndex + 1) % playerAvatar.frameCount;
-  }
-
+  // Use first frame only (static)
   const spriteW = playerAvatar.sprite.width / playerAvatar.frameCount;
   const spriteH = playerAvatar.sprite.height;
-  const srcX = playerAvatar.frameIndex * spriteW;
+  const srcX = 0; // First frame only
 
   // Hover glow
   if (playerAvatar.hover) {
@@ -411,7 +402,7 @@ function drawPlayerAvatar(time, dt) {
   ctx.fill();
   ctx.globalAlpha = 1;
 
-  // Draw sprite
+  // Draw sprite (first frame only)
   ctx.drawImage(
     playerAvatar.sprite,
     srcX,
