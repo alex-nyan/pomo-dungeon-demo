@@ -11,8 +11,9 @@ const createDefaultPlayer = () => ({
   currentAvatar: 'knight_1',
   unlockedAvatars: ['knight_1'],
   totalTasksCompleted: 0,
-  totalTimeWorked: 0,
-  completedTasks: [], // Array of { name, timeEstimate, deadline, completedAt, timeRemainingBeforeDeadline }
+  totalTaskTime: 0, // Time spent on tasks (ms)
+  totalPomodoroTime: 0, // Time spent in pomodoro/stopwatch mode (ms)
+  completedTasks: [], // Array of { name, timeEstimate, deadline, completedAt, timeRemainingBeforeDeadline, timeSpent }
 });
 
 export function useGameState() {
@@ -74,11 +75,13 @@ export function useGameState() {
       )
     );
 
+    const timeSpentOnTask = task.timeSpent || 0;
+    
     setPlayer((prev) => ({
       ...prev,
       coins: prev.coins + coinsEarned,
       totalTasksCompleted: prev.totalTasksCompleted + 1,
-      totalTimeWorked: prev.totalTimeWorked + (task.timeSpent || 0),
+      totalTaskTime: (prev.totalTaskTime || 0) + timeSpentOnTask,
       completedTasks: [
         ...(prev.completedTasks || []),
         {
@@ -89,6 +92,7 @@ export function useGameState() {
           completedAt,
           timeRemainingBeforeDeadline,
           priority: task.priority,
+          timeSpent: timeSpentOnTask,
         }
       ],
     }));
@@ -136,6 +140,14 @@ export function useGameState() {
       .sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority]);
   };
 
+  // Add pomodoro/stopwatch time
+  const addPomodoroTime = (timeMs) => {
+    setPlayer((prev) => ({
+      ...prev,
+      totalPomodoroTime: (prev.totalPomodoroTime || 0) + timeMs,
+    }));
+  };
+
   return {
     player,
     tasks,
@@ -146,5 +158,6 @@ export function useGameState() {
     unlockAvatar,
     setCurrentAvatar,
     getActiveTasks,
+    addPomodoroTime,
   };
 }

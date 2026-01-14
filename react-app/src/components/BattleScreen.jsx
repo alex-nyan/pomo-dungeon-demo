@@ -53,7 +53,7 @@ function BattleScreen({ task, gameState, onExit, onComplete }) {
   // Load player sprite and draw first frame
   useEffect(() => {
     const img = new Image();
-    img.src = `${avatar.basePath}/Idle.png`;
+    img.src = `${avatar.basePath}/${avatar.idleSprite || 'Idle.png'}`;
     img.onload = () => {
       setPlayerSpriteLoaded(img);
     };

@@ -53,7 +53,7 @@ function HomeScreen({ gameState, onNavigate }) {
   useEffect(() => {
     const avatar = AVATARS[gameState.player.currentAvatar] || AVATARS.knight_1;
     const img = new Image();
-    img.src = `${avatar.basePath}/Idle.png`;
+    img.src = `${avatar.basePath}/${avatar.idleSprite || 'Idle.png'}`;
     img.onload = () => setAvatarSprite(img);
   }, [gameState.player.currentAvatar]);
 

@@ -1,5 +1,49 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { AVATARS } from '../data/constants';
+
+// Component to render only the first frame of a sprite
+function SpriteFirstFrame({ src, className, alt, width, height }) {
+  const canvasRef = useRef(null);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    const img = new Image();
+    img.src = src;
+    img.onload = () => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      
+      const ctx = canvas.getContext('2d');
+      ctx.imageSmoothingEnabled = false;
+      
+      // Assume 4 frames in spritesheet
+      const frameWidth = img.width / 4;
+      const frameHeight = img.height;
+      
+      canvas.width = frameWidth;
+      canvas.height = frameHeight;
+      
+      // Draw only first frame
+      ctx.drawImage(img, 0, 0, frameWidth, frameHeight, 0, 0, frameWidth, frameHeight);
+      setLoaded(true);
+    };
+  }, [src]);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      className={className}
+      style={{ 
+        width: width || 'auto', 
+        height: height || 'auto',
+        imageRendering: 'pixelated',
+        opacity: loaded ? 1 : 0,
+        transition: 'opacity 0.2s'
+      }}
+      title={alt}
+    />
+  );
+}
 
 function CollectionsScreen({ gameState, onBack }) {
   const { player } = gameState;
@@ -10,10 +54,8 @@ function CollectionsScreen({ gameState, onBack }) {
     const avatar = AVATARS[avatarId];
     
     if (player.unlockedAvatars.includes(avatarId)) {
-      // Equip
       gameState.setCurrentAvatar(avatarId);
     } else if (player.coins >= avatar.cost) {
-      // Buy and equip
       const result = gameState.unlockAvatar(avatarId, avatar.cost);
       if (result.success) {
         gameState.setCurrentAvatar(avatarId);
@@ -22,9 +64,11 @@ function CollectionsScreen({ gameState, onBack }) {
   };
 
   const formatTime = (ms) => {
+    if (!ms || ms === 0) return '0m';
     const hours = Math.floor(ms / 3600000);
     const mins = Math.floor((ms % 3600000) / 60000);
-    return hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
+    if (hours > 0) return `${hours}h ${mins}m`;
+    return `${mins}m`;
   };
 
   const formatTimeRemaining = (ms) => {
@@ -43,33 +87,36 @@ function CollectionsScreen({ gameState, onBack }) {
   const completedTasks = player.completedTasks || [];
 
   return (
-    <div className="screen collections-screen">
-      <div className="collections-wrap">
-        <header className="screen-header">
-          <button className="btn btn-back" onClick={onBack}>
+    <div className="screen collections-screen fullscreen">
+      <div className="collections-wrap fullscreen">
+        <header className="collections-header">
+          <button className="btn btn-back-medieval" onClick={onBack}>
             ← Back
           </button>
-          <h1>Collections</h1>
-          <div className="coins-display">
+          <h1 className="collections-title">COLLECTIONS</h1>
+          <div className="coins-display-medieval">
             <span className="coin-icon">🪙</span>
             <span>{player.coins}</span>
           </div>
         </header>
 
         <div className="collections-content">
-          <div className="current-avatar-section">
-            <h2>Current Avatar</h2>
+          <div className="current-avatar-section medieval-card">
+            <h2 className="medieval-heading">Current Avatar</h2>
             <div className="current-avatar-display">
-              <img
-                className="avatar-preview"
-                src={`${currentAvatar.basePath}/Idle.png`}
+              <SpriteFirstFrame
+                src={`${currentAvatar.basePath}/${currentAvatar.idleSprite || 'Idle.png'}`}
+                className="avatar-preview-canvas"
                 alt={currentAvatar.name}
+                width={180}
+                height={180}
               />
+              <div className="avatar-name-display">{currentAvatar.name}</div>
             </div>
           </div>
 
-          <div className="avatar-grid-section">
-            <h2>Available Avatars</h2>
+          <div className="avatar-grid-section medieval-card">
+            <h2 className="medieval-heading">Available Avatars</h2>
             <div className="avatar-grid">
               {Object.values(AVATARS).map((avatar) => {
                 const isUnlocked = player.unlockedAvatars.includes(avatar.id);
@@ -79,19 +126,21 @@ function CollectionsScreen({ gameState, onBack }) {
                 return (
                   <div
                     key={avatar.id}
-                    className={`avatar-card ${isSelected ? 'selected' : ''} ${!isUnlocked ? 'locked' : ''}`}
+                    className={`avatar-card medieval ${isSelected ? 'selected' : ''} ${!isUnlocked ? 'locked' : ''}`}
                     onClick={() => handleAvatarClick(avatar.id)}
                     style={{ cursor: isUnlocked || canAfford ? 'pointer' : 'not-allowed' }}
                   >
-                    <img
-                      className="avatar-card-img"
-                      src={`${avatar.basePath}/Idle.png`}
+                    <SpriteFirstFrame
+                      src={`${avatar.basePath}/${avatar.idleSprite || 'Idle.png'}`}
+                      className="avatar-card-canvas"
                       alt={avatar.name}
+                      width={80}
+                      height={80}
                     />
                     <div className="avatar-card-name">{avatar.name}</div>
                     <div className="avatar-card-cost">
                       {isUnlocked ? (
-                        isSelected ? '✓ Equipped' : 'Click to equip'
+                        isSelected ? '✓ Equipped' : 'Equip'
                       ) : (
                         <>
                           <span className="coin-icon">🪙</span> {avatar.cost}
@@ -104,33 +153,33 @@ function CollectionsScreen({ gameState, onBack }) {
             </div>
           </div>
 
-          <div className="stats-section">
-            <h2>Stats</h2>
-            <div className="stats-grid">
+          <div className="stats-section medieval-card">
+            <h2 className="medieval-heading">Stats</h2>
+            <div className="stats-grid-medieval">
               <div 
-                className={`stat-card clickable ${showCompletedDetails ? 'active' : ''}`}
+                className={`stat-card-medieval clickable ${showCompletedDetails ? 'active' : ''}`}
                 onClick={() => setShowCompletedDetails(!showCompletedDetails)}
               >
-                <div className="stat-value">{player.totalTasksCompleted}</div>
-                <div className="stat-label">Quests Completed</div>
-                <div className="stat-hint">(Click for details)</div>
+                <div className="stat-value-medieval">{player.totalTasksCompleted || 0}</div>
+                <div className="stat-label-medieval">Quests Completed</div>
+                <div className="stat-hint-medieval">(Click for details)</div>
               </div>
-              <div className="stat-card">
-                <div className="stat-value">{formatTime(player.totalTimeWorked)}</div>
-                <div className="stat-label">Time Worked</div>
+              <div className="stat-card-medieval">
+                <div className="stat-value-medieval">{formatTime(player.totalTaskTime || 0)}</div>
+                <div className="stat-label-medieval">Quest Time</div>
               </div>
-              <div className="stat-card">
-                <div className="stat-value">{player.coins}</div>
-                <div className="stat-label">Total Coins</div>
+              <div className="stat-card-medieval">
+                <div className="stat-value-medieval">{formatTime(player.totalPomodoroTime || 0)}</div>
+                <div className="stat-label-medieval">Pomodoro Time</div>
               </div>
             </div>
 
             {showCompletedDetails && completedTasks.length > 0 && (
-              <div className="completed-tasks-details">
-                <h3>Completed Quest History</h3>
+              <div className="completed-tasks-details medieval">
+                <h3 className="medieval-subheading">Completed Quest History</h3>
                 <div className="completed-tasks-list">
                   {completedTasks.slice().reverse().map((task, index) => (
-                    <div key={task.id || index} className="completed-task-item">
+                    <div key={task.id || index} className="completed-task-item medieval">
                       <div className="completed-task-name">{task.name}</div>
                       <div className="completed-task-meta">
                         <span className="meta-item">
@@ -138,10 +187,14 @@ function CollectionsScreen({ gameState, onBack }) {
                           Est: {task.timeEstimate}min
                         </span>
                         <span className="meta-item">
+                          <span className="meta-icon">⌛</span>
+                          Spent: {formatTime(task.timeSpent || 0)}
+                        </span>
+                        <span className="meta-item">
                           <span className="meta-icon">⏳</span>
                           {formatTimeRemaining(task.timeRemainingBeforeDeadline)}
                         </span>
-                        <span className={`priority-badge ${task.priority}`}>
+                        <span className={`priority-badge-medieval ${task.priority}`}>
                           {task.priority?.toUpperCase()}
                         </span>
                       </div>
@@ -152,7 +205,7 @@ function CollectionsScreen({ gameState, onBack }) {
             )}
 
             {showCompletedDetails && completedTasks.length === 0 && (
-              <div className="no-completed-tasks">
+              <div className="no-completed-tasks medieval">
                 <p>No completed quests yet. Start your adventure!</p>
               </div>
             )}

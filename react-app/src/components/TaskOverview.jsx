@@ -2,28 +2,73 @@ import { useState, useMemo } from 'react';
 import { SCREENS, PRIORITY_CONFIG } from '../data/constants';
 import AddTaskModal from './AddTaskModal';
 
-// Generate random but consistent positions for scrolls based on task id
-const getScrollPosition = (taskId, index, total) => {
-  // Use task id to seed a pseudo-random position
+// Tack colors for variety
+const TACK_COLORS = [
+  '#c9a227', // gold
+  '#8b4513', // brown
+  '#2d5a3a', // green
+  '#4a2c2a', // dark red
+  '#3d3d6b', // dark blue
+  '#6b4423', // copper
+  '#8b0000', // dark red
+  '#2f4f4f', // dark slate
+];
+
+// Generate weathering styles for each scroll based on task id
+const getScrollWeathering = (taskId) => {
   const seed = taskId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
   
-  // Calculate grid-like base positions but with random offsets
-  const cols = Math.min(4, total);
+  // Weathering variations
+  const wearLevel = (seed % 5) + 1; // 1-5
+  const stainOpacity = 0.03 + (seed % 7) * 0.01;
+  const edgeWear = (seed % 4) * 2;
+  const colorShift = (seed % 3) - 1; // -1, 0, or 1
+  
+  // Get tack color
+  const tackColor = TACK_COLORS[seed % TACK_COLORS.length];
+  
+  // Base colors with slight variations
+  const baseHue = 35 + colorShift * 5;
+  const baseSat = 25 + (seed % 10);
+  const baseLit = 85 - wearLevel * 2;
+  
+  return {
+    wearLevel,
+    stainOpacity,
+    edgeWear,
+    tackColor,
+    baseColor: `hsl(${baseHue}, ${baseSat}%, ${baseLit}%)`,
+    darkColor: `hsl(${baseHue}, ${baseSat + 5}%, ${baseLit - 15}%)`,
+    lightColor: `hsl(${baseHue}, ${baseSat - 5}%, ${baseLit + 5}%)`,
+  };
+};
+
+// Generate non-overlapping grid positions
+const getGridPosition = (index, total) => {
+  // Calculate grid dimensions based on total items
+  const cols = Math.min(4, Math.ceil(Math.sqrt(total)));
+  const rows = Math.ceil(total / cols);
+  
   const col = index % cols;
   const row = Math.floor(index / cols);
   
-  // Base positions as percentages
-  const baseX = 10 + (col * (80 / Math.max(cols - 1, 1)));
-  const baseY = 8 + (row * 35);
+  // Calculate cell dimensions
+  const cellWidth = 100 / cols;
+  const cellHeight = 100 / rows;
   
-  // Random offsets based on seed
-  const offsetX = ((seed * 17) % 30) - 15;
-  const offsetY = ((seed * 23) % 20) - 10;
-  const rotation = ((seed * 7) % 12) - 6;
+  // Position within cell with some randomization (but no overlap)
+  const baseX = col * cellWidth + cellWidth * 0.1;
+  const baseY = row * cellHeight + cellHeight * 0.1;
+  
+  // Small random offset within the cell
+  const seed = index * 17 + 31;
+  const offsetX = ((seed * 13) % 15);
+  const offsetY = ((seed * 19) % 10);
+  const rotation = ((seed * 7) % 10) - 5;
   
   return {
-    left: `${Math.max(5, Math.min(75, baseX + offsetX))}%`,
-    top: `${Math.max(5, Math.min(65, baseY + offsetY))}%`,
+    left: `${baseX + offsetX}%`,
+    top: `${baseY + offsetY}%`,
     rotation: `${rotation}deg`,
   };
 };
@@ -39,10 +84,13 @@ function TaskOverview({ gameState, onNavigate, onStartTask }) {
       return priorityOrder[a.priority] - priorityOrder[b.priority];
     });
 
-  // Generate positions for all tasks
-  const taskPositions = useMemo(() => {
+  // Generate positions and weathering for all tasks
+  const taskStyles = useMemo(() => {
     return activeTasks.reduce((acc, task, index) => {
-      acc[task.id] = getScrollPosition(task.id, index, activeTasks.length);
+      acc[task.id] = {
+        position: getGridPosition(index, activeTasks.length),
+        weathering: getScrollWeathering(task.id),
+      };
       return acc;
     }, {});
   }, [activeTasks]);
@@ -76,10 +124,10 @@ function TaskOverview({ gameState, onNavigate, onStartTask }) {
   };
 
   return (
-    <div className="screen task-overview-screen fullscreen">
+    <div className="screen task-overview-screen fullscreen tavern-bg">
       <div className="quest-board-container fullscreen">
-        <header className="quest-board-header">
-          <button className="btn btn-back" onClick={() => onNavigate(SCREENS.HOME)}>
+        <header className="quest-board-header tavern">
+          <button className="btn btn-back-medieval" onClick={() => onNavigate(SCREENS.HOME)}>
             ← Back
           </button>
           <h1 className="quest-board-title">QUEST BOARD</h1>
@@ -88,9 +136,9 @@ function TaskOverview({ gameState, onNavigate, onStartTask }) {
           </button>
         </header>
 
-        <div className="bulletin-board">
-          <div className="board-frame">
-            <div className="board-surface">
+        <div className="bulletin-board weathered">
+          <div className="board-frame weathered">
+            <div className="board-surface weathered">
               {activeTasks.length === 0 ? (
                 <div className="empty-board">
                   <div className="empty-scroll">
@@ -104,24 +152,33 @@ function TaskOverview({ gameState, onNavigate, onStartTask }) {
               ) : (
                 <div className="quest-scrolls-board">
                   {activeTasks.map((task, index) => {
-                    const position = taskPositions[task.id];
+                    const styles = taskStyles[task.id];
+                    const { position, weathering } = styles;
                     return (
                     <div 
                       key={task.id} 
-                      className="quest-scroll-container absolute"
+                      className={`quest-scroll-container absolute weathered-${weathering.wearLevel}`}
                       style={{ 
                         left: position.left,
                         top: position.top,
                         '--rotation': position.rotation,
-                        '--delay': `${index * 0.05}s` 
+                        '--delay': `${index * 0.05}s`,
+                        '--scroll-base': weathering.baseColor,
+                        '--scroll-dark': weathering.darkColor,
+                        '--scroll-light': weathering.lightColor,
+                        '--stain-opacity': weathering.stainOpacity,
                       }}
                     >
-                      <div className="tack" />
                       <div 
-                        className={`quest-scroll ${task.priority}`}
+                        className="tack colored" 
+                        style={{ background: `radial-gradient(circle at 30% 30%, ${weathering.tackColor} 0%, ${weathering.tackColor}88 60%, #1a1008 100%)` }}
+                      />
+                      <div 
+                        className={`quest-scroll weathered ${task.priority}`}
                         onClick={() => onStartTask(task)}
                       >
-                        <div className="scroll-top-curl" />
+                        <div className="scroll-stain" />
+                        <div className="scroll-top-curl weathered" />
                         <div className="scroll-content">
                           <div className={`priority-seal ${task.priority}`}>
                             {PRIORITY_CONFIG[task.priority]?.label || task.priority}
@@ -148,7 +205,7 @@ function TaskOverview({ gameState, onNavigate, onStartTask }) {
                             )}
                           </div>
                         </div>
-                        <div className="scroll-bottom-curl" />
+                        <div className="scroll-bottom-curl weathered" />
                         <button 
                           className="start-quest-btn"
                           onClick={(e) => {
