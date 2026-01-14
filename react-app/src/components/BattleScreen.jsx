@@ -15,6 +15,8 @@ function BattleScreen({ task, gameState, onExit, onComplete }) {
   const pausedTimeRef = useRef(0);
   const playerCanvasRef = useRef(null);
   const monsterCanvasRef = useRef(null);
+  const playerAttackStartRef = useRef(0);
+  const monsterAttackStartRef = useRef(0);
 
   const isPomodoro = Boolean(task?.isPomodoro);
   const studyMinutes = task?.timeEstimate || 25;
@@ -23,6 +25,10 @@ function BattleScreen({ task, gameState, onExit, onComplete }) {
     (phase === 'break' ? breakMinutes : studyMinutes) * 60 * 1000;
   const avatar = AVATARS[gameState.player.currentAvatar] || AVATARS.knight_1;
   const monster = MONSTERS[task?.monsterType] || MONSTERS.goblin;
+  const PLAYER_SIZE = 140;
+  const MONSTER_SIZE = 140;
+  const ATTACK_COOLDOWN_MS = 5000;
+  const FRAME_DURATION_MS = 120;
   
   // Get dungeon room from task or use first one as default
   const dungeonRoom = task?.dungeonRoom || DUNGEON_ROOMS[0];
@@ -84,49 +90,87 @@ function BattleScreen({ task, gameState, onExit, onComplete }) {
     };
   }, [monster.basePath, monster.sprite]);
 
-  // Draw player sprite (first frame only)
-  useEffect(() => {
-    if (!playerSpriteLoaded || !playerCanvasRef.current) return;
-    const canvas = playerCanvasRef.current;
-    const ctx = canvas.getContext('2d');
-    ctx.imageSmoothingEnabled = false;
-    
-    // Assume 4 frames in spritesheet
-    const frameWidth = playerSpriteLoaded.width / 4;
-    const frameHeight = playerSpriteLoaded.height;
-    
-    canvas.width = frameWidth;
-    canvas.height = frameHeight;
-    
-    // Draw only first frame
-    ctx.drawImage(
-      playerSpriteLoaded,
-      0, 0, frameWidth, frameHeight,
-      0, 0, frameWidth, frameHeight
-    );
-  }, [playerSpriteLoaded]);
+  const getFrameCount = (img) => {
+    if (!img) return 1;
+    return Math.max(1, Math.floor(img.width / img.height));
+  };
 
-  // Draw monster sprite (first frame only)
-  useEffect(() => {
-    if (!monsterSpriteLoaded || !monsterCanvasRef.current) return;
-    const canvas = monsterCanvasRef.current;
+  const drawFrame = (canvas, img, frameIndex, size) => {
+    if (!canvas || !img) return;
     const ctx = canvas.getContext('2d');
     ctx.imageSmoothingEnabled = false;
-    
-    // Assume 4 frames in spritesheet
-    const frameWidth = monsterSpriteLoaded.width / 4;
-    const frameHeight = monsterSpriteLoaded.height;
-    
-    canvas.width = frameWidth;
-    canvas.height = frameHeight;
-    
-    // Draw only first frame
+    const frameCount = getFrameCount(img);
+    const frameWidth = Math.floor(img.width / frameCount);
+    const frameHeight = img.height;
+    const clampedFrame = Math.max(0, Math.min(frameCount - 1, frameIndex));
+    canvas.width = size;
+    canvas.height = size;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.drawImage(
-      monsterSpriteLoaded,
-      0, 0, frameWidth, frameHeight,
-      0, 0, frameWidth, frameHeight
+      img,
+      clampedFrame * frameWidth,
+      0,
+      frameWidth,
+      frameHeight,
+      0,
+      0,
+      canvas.width,
+      canvas.height
     );
-  }, [monsterSpriteLoaded]);
+  };
+
+  useEffect(() => {
+    if (!playerSpriteLoaded || !monsterSpriteLoaded) return;
+
+    const playerCanvas = playerCanvasRef.current;
+    const monsterCanvas = monsterCanvasRef.current;
+
+    drawFrame(playerCanvas, playerSpriteLoaded, 0, PLAYER_SIZE);
+    drawFrame(monsterCanvas, monsterSpriteLoaded, 0, MONSTER_SIZE);
+
+    if (paused || completed) return;
+
+    const playerFrames = getFrameCount(playerSpriteLoaded);
+    const monsterFrames = getFrameCount(monsterSpriteLoaded);
+    const playerAttackDuration = playerFrames * FRAME_DURATION_MS;
+    const monsterAttackDuration = monsterFrames * FRAME_DURATION_MS;
+
+    const startCycle = (startTime) => {
+      playerAttackStartRef.current = startTime;
+      monsterAttackStartRef.current = startTime + playerAttackDuration + 200;
+    };
+
+    startCycle(performance.now());
+    const intervalId = setInterval(
+      () => startCycle(performance.now()),
+      Math.max(ATTACK_COOLDOWN_MS, playerAttackDuration + monsterAttackDuration + 400)
+    );
+
+    let animationId;
+    const render = (now) => {
+      const playerElapsed = now - playerAttackStartRef.current;
+      const playerFrame =
+        playerElapsed >= 0 && playerElapsed < playerAttackDuration
+          ? Math.floor(playerElapsed / FRAME_DURATION_MS) % playerFrames
+          : 0;
+      drawFrame(playerCanvas, playerSpriteLoaded, playerFrame, PLAYER_SIZE);
+
+      const monsterElapsed = now - monsterAttackStartRef.current;
+      const monsterFrame =
+        monsterElapsed >= 0 && monsterElapsed < monsterAttackDuration
+          ? Math.floor(monsterElapsed / FRAME_DURATION_MS) % monsterFrames
+          : 0;
+      drawFrame(monsterCanvas, monsterSpriteLoaded, monsterFrame, MONSTER_SIZE);
+
+      animationId = requestAnimationFrame(render);
+    };
+
+    animationId = requestAnimationFrame(render);
+    return () => {
+      clearInterval(intervalId);
+      cancelAnimationFrame(animationId);
+    };
+  }, [playerSpriteLoaded, monsterSpriteLoaded, paused, completed]);
 
   const handleComplete = () => {
     if (completed) return;
