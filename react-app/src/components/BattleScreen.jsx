@@ -9,13 +9,18 @@ function BattleScreen({ task, gameState, onExit, onComplete }) {
   const [coinsEarned, setCoinsEarned] = useState(0);
   const [playerSpriteLoaded, setPlayerSpriteLoaded] = useState(null);
   const [monsterSpriteLoaded, setMonsterSpriteLoaded] = useState(null);
+  const [phase, setPhase] = useState('study');
   
   const startTimeRef = useRef(performance.now() - (task?.timeSpent || 0));
   const pausedTimeRef = useRef(0);
   const playerCanvasRef = useRef(null);
   const monsterCanvasRef = useRef(null);
 
-  const duration = (task?.timeEstimate || 25) * 60 * 1000;
+  const isPomodoro = Boolean(task?.isPomodoro);
+  const studyMinutes = task?.timeEstimate || 25;
+  const breakMinutes = task?.breakMinutes || 5;
+  const duration =
+    (phase === 'break' ? breakMinutes : studyMinutes) * 60 * 1000;
   const avatar = AVATARS[gameState.player.currentAvatar] || AVATARS.knight_1;
   const monster = MONSTERS[task?.monsterType] || MONSTERS.goblin;
   
@@ -43,12 +48,23 @@ function BattleScreen({ task, gameState, onExit, onComplete }) {
       setElapsed(newElapsed);
 
       if (newElapsed >= duration) {
-        handleComplete();
+        if (isPomodoro && phase === 'study') {
+          setPhase('break');
+        } else {
+          handleComplete();
+        }
       }
     }, 100);
 
     return () => clearInterval(interval);
-  }, [completed, paused, duration]);
+  }, [completed, paused, duration, isPomodoro, phase]);
+
+  useEffect(() => {
+    setElapsed(0);
+    startTimeRef.current = performance.now();
+    pausedTimeRef.current = 0;
+    setPaused(false);
+  }, [phase]);
 
   // Load player sprite and draw first frame
   useEffect(() => {
@@ -116,6 +132,11 @@ function BattleScreen({ task, gameState, onExit, onComplete }) {
     if (completed) return;
     setCompleted(true);
 
+    if (task?.isPomodoro) {
+      setCoinsEarned(20);
+      return;
+    }
+
     const result = gameState.completeTask(task.id);
     setCoinsEarned(result?.coinsEarned || COIN_REWARDS[task.priority] || 20);
   };
@@ -140,7 +161,10 @@ function BattleScreen({ task, gameState, onExit, onComplete }) {
   };
 
   const remaining = Math.max(0, duration - elapsed);
-  const progress = elapsed / duration;
+  const progress = duration > 0 ? elapsed / duration : 0;
+  const monsterHealth = isPomodoro && phase === 'break' ? 0 : Math.max(0, (1 - progress) * 100);
+  const playerHealth = isPomodoro && phase === 'break' ? Math.max(0, (1 - progress) * 100) : 100;
+  const phaseLabel = isPomodoro ? (phase === 'break' ? 'Break' : 'Study') : null;
 
   return (
     <div className="screen battle-screen fullscreen">
@@ -159,6 +183,7 @@ function BattleScreen({ task, gameState, onExit, onComplete }) {
           </button>
           <div className="battle-timer">
             <span>{formatTime(remaining)}</span>
+            {phaseLabel && <div className="battle-phase">{phaseLabel}</div>}
           </div>
           <div className="battle-task-name">{task?.name || 'Task'}</div>
         </header>
@@ -167,7 +192,7 @@ function BattleScreen({ task, gameState, onExit, onComplete }) {
           <div className="combatant player-side">
             <div className="health-bar-container">
               <div className="health-bar player-health">
-                <div className="health-fill" style={{ width: '100%' }} />
+                <div className="health-fill" style={{ width: `${playerHealth}%` }} />
               </div>
             </div>
             <div className="sprite-container">
@@ -183,7 +208,7 @@ function BattleScreen({ task, gameState, onExit, onComplete }) {
               <div className="health-bar monster-health">
                 <div
                   className="health-fill"
-                  style={{ width: `${Math.max(0, (1 - progress) * 100)}%` }}
+                  style={{ width: `${monsterHealth}%` }}
                 />
               </div>
             </div>

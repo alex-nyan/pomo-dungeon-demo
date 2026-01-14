@@ -1,6 +1,7 @@
 import { useRef, useEffect, useState, useCallback } from 'react';
-import { SCREENS, MODE, AVATARS } from '../data/constants';
+import { SCREENS, MODE, AVATARS, getRandomDungeonRoom, getRandomMonster } from '../data/constants';
 import AddTaskModal from './AddTaskModal';
+import PomodoroModal from './PomodoroModal';
 
 const W = 320;
 const H = 180;
@@ -9,6 +10,7 @@ function HomeScreen({ gameState, onNavigate }) {
   const canvasRef = useRef(null);
   const [mode, setMode] = useState(MODE.TASKS);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isPomodoroModalOpen, setIsPomodoroModalOpen] = useState(false);
   const [avatarSprite, setAvatarSprite] = useState(null);
   
   // Gate state
@@ -75,6 +77,7 @@ function HomeScreen({ gameState, onNavigate }) {
       gate.opening = false;
       gate.hover = false;
       prevModeRef.current = mode;
+      setIsPomodoroModalOpen(false);
     }
   }, [mode]);
 
@@ -571,9 +574,13 @@ function HomeScreen({ gameState, onNavigate }) {
       return;
     }
 
-    // Open dungeon click -> Tasks
+    // Open dungeon click -> Tasks (blue moon) or Pomodoro (red moon)
     if (gate.openT >= 0.5 && mx >= d.x && mx <= d.x + d.w && my >= d.y && my <= d.y + d.h) {
-      onNavigate(SCREENS.TASKS);
+      if (mode === MODE.STOPWATCH) {
+        setIsPomodoroModalOpen(true);
+      } else {
+        onNavigate(SCREENS.TASKS);
+      }
       return;
     }
 
@@ -614,6 +621,24 @@ function HomeScreen({ gameState, onNavigate }) {
           onSubmit={(taskData) => {
             gameState.addTask(taskData);
             setIsModalOpen(false);
+          }}
+        />
+
+        <PomodoroModal
+          isOpen={isPomodoroModalOpen}
+          onClose={() => setIsPomodoroModalOpen(false)}
+          onSubmit={({ studyMinutes, breakMinutes }) => {
+            const pomodoroTask = {
+              id: `pomo-${Date.now()}`,
+              name: 'Red Moon Pomodoro',
+              timeEstimate: studyMinutes,
+              breakMinutes,
+              isPomodoro: true,
+              monsterType: getRandomMonster(),
+              dungeonRoom: getRandomDungeonRoom(),
+            };
+            setIsPomodoroModalOpen(false);
+            onNavigate(SCREENS.BATTLE, pomodoroTask);
           }}
         />
       </div>

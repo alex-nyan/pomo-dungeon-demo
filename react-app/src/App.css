@@ -122,6 +122,50 @@ body {
     inset 0 2px 0 rgba(255, 255, 255, 0.15);
 }
 
+@media (max-width: 900px) {
+  .btn-medieval {
+    font-size: 1.6rem;
+    padding: 18px 32px;
+    letter-spacing: 1px;
+  }
+
+  .canvas-overlay-ui .btn-medieval {
+    margin-top: 20px;
+    margin-left: 20px;
+  }
+}
+
+@media (max-width: 600px) {
+  .btn-medieval {
+    font-size: 1.2rem;
+    padding: 14px 22px;
+    border-width: 2px;
+    box-shadow: 
+      0 4px 12px rgba(0, 0, 0, 0.45),
+      inset 0 2px 0 rgba(255, 255, 255, 0.1);
+  }
+
+  .btn-medieval:hover {
+    transform: translateY(-2px);
+  }
+}
+
+@media (max-width: 420px) {
+  .btn-medieval {
+    font-size: 1rem;
+    padding: 10px 16px;
+  }
+
+  .canvas-overlay-ui {
+    padding: 12px;
+  }
+
+  .canvas-overlay-ui .btn-medieval {
+    margin-top: 12px;
+    margin-left: 12px;
+  }
+}
+
 .coins-display {
   display: flex;
   align-items: center;
@@ -600,6 +644,14 @@ body {
   color: #f4e4bc;
   letter-spacing: 3px;
   text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+}
+
+.battle-phase {
+  margin-top: 6px;
+  font-size: 0.7rem;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--muted);
 }
 
 .battle-task-name {
