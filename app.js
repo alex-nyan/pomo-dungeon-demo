@@ -458,10 +458,6 @@ tasksAddBtn?.addEventListener("click", openAddTaskModal);
 emptyAddTaskBtn?.addEventListener("click", openAddTaskModal);
 closeModalBtn?.addEventListener("click", closeAddTaskModal);
 
-addTaskModal?.addEventListener("click", (e) => {
-  if (e.target === addTaskModal) closeAddTaskModal();
-});
-
 addTaskForm?.addEventListener("submit", (e) => {
   e.preventDefault();
 
@@ -1108,29 +1104,20 @@ function drawBackground(time) {
   pxRect(0, 0, W, H, mode === MODE.STOPWATCH ? "#070b14" : "#0b1020");
   drawMoon(time);
 
-  // distant hills
-  const offset1 = Math.floor((time * 8) % W);
-  for (let i = -1; i < 3; i++) {
-    const baseX = i * W - offset1;
-    const hillCol = mode === MODE.STOPWATCH ? "#0d132b" : "#121a3a";
-    pxRect(baseX, 72, W, 50, hillCol);
-    for (let x = 0; x < W; x += 3) {
-      const h = 10 + ((x * 7 + i * 31) % 18);
-      pxRect(baseX + x, 72 - h, 3, h, hillCol);
-    }
+  // distant hills (static - no movement)
+  const hillCol = mode === MODE.STOPWATCH ? "#0d132b" : "#121a3a";
+  pxRect(0, 72, W, 50, hillCol);
+  for (let x = 0; x < W; x += 3) {
+    const h = 10 + ((x * 7) % 18);
+    pxRect(x, 72 - h, 3, h, hillCol);
   }
 
-  // mid trees
-  const offset2 = Math.floor((time * 16) % W);
-  for (let i = -1; i < 3; i++) {
-    const baseX = i * W - offset2;
-    for (let x = 0; x < W; x += 10) {
-      const trunkX = baseX + x;
-      const trunkH = 18 + ((x * 13 + i * 17) % 14);
-      pxRect(trunkX, 92, 2, trunkH, "#1a2320");
-      pxRect(trunkX - 4, 86, 10, 8, "#172a22");
-      pxRect(trunkX - 2, 82, 6, 6, "#172a22");
-    }
+  // mid trees (static - no movement)
+  for (let x = 0; x < W; x += 10) {
+    const trunkH = 18 + ((x * 13) % 14);
+    pxRect(x, 92, 2, trunkH, "#1a2320");
+    pxRect(x - 4, 86, 10, 8, "#172a22");
+    pxRect(x - 2, 82, 6, 6, "#172a22");
   }
 
   // ground

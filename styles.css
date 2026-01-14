@@ -86,31 +86,36 @@ body {
   pointer-events: auto;
 }
 
+.canvas-overlay-ui .btn-medieval {
+  margin-top: 30px;
+  margin-left: 30px;
+}
+
 /* Medieval Button Style */
 .btn-medieval {
   font-family: 'MedievalSharp', cursive;
-  font-size: 1.1rem;
-  padding: 12px 24px;
+  font-size: 2.2rem;
+  padding: 24px 48px;
   background: linear-gradient(180deg, #3d2a1a 0%, #2a1a0f 100%);
-  border: 2px solid #8b6914;
-  border-radius: 4px;
+  border: 3px solid #8b6914;
+  border-radius: 6px;
   color: #f4e4bc;
   cursor: pointer;
-  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
   box-shadow: 
-    0 4px 8px rgba(0, 0, 0, 0.4),
-    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    0 6px 16px rgba(0, 0, 0, 0.5),
+    inset 0 2px 0 rgba(255, 255, 255, 0.1);
   transition: all 0.2s ease;
-  letter-spacing: 1px;
+  letter-spacing: 2px;
 }
 
 .btn-medieval:hover {
   background: linear-gradient(180deg, #4d3a2a 0%, #3a2a1f 100%);
   border-color: #c9a227;
-  transform: translateY(-2px);
+  transform: translateY(-3px);
   box-shadow: 
-    0 6px 12px rgba(0, 0, 0, 0.5),
-    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+    0 10px 20px rgba(0, 0, 0, 0.6),
+    inset 0 2px 0 rgba(255, 255, 255, 0.15);
 }
 
 .btn-medieval:active {
@@ -261,13 +266,13 @@ canvas {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(4px);
+  background: transparent;
   display: flex;
-  justify-content: flex-end;
+  justify-content: flex-start;
   align-items: flex-start;
   padding: 20px;
   z-index: 1000;
+  pointer-events: none;
 }
 
 .modal-overlay.hidden {
@@ -282,10 +287,142 @@ canvas {
   width: 100%;
   max-width: 380px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  pointer-events: auto;
 }
 
+/* Scroll-style modal for Add Quest */
 .add-task-modal {
-  margin-top: 60px;
+  margin-top: 20px;
+  margin-left: 20px;
+  max-width: 380px;
+  background: 
+    linear-gradient(180deg, 
+      #d4c4a8 0%, 
+      #e8dcc4 5%,
+      #f4e8d4 15%,
+      #f0e4cc 50%,
+      #e8dcc4 85%,
+      #d4c4a8 95%,
+      #c4b498 100%
+    );
+  border: none;
+  border-radius: 8px;
+  padding: 0;
+  position: relative;
+  box-shadow: 
+    0 20px 60px rgba(0, 0, 0, 0.6),
+    inset 0 0 30px rgba(139, 105, 20, 0.1);
+}
+
+/* Scroll roll decorations */
+.add-task-modal::before,
+.add-task-modal::after {
+  content: '';
+  position: absolute;
+  left: -12px;
+  right: -12px;
+  height: 28px;
+  background: linear-gradient(90deg,
+    #5c4a32 0%,
+    #8b7355 10%,
+    #a08060 30%,
+    #8b7355 50%,
+    #a08060 70%,
+    #8b7355 90%,
+    #5c4a32 100%
+  );
+  border-radius: 14px;
+  box-shadow: 
+    0 4px 8px rgba(0, 0, 0, 0.4),
+    inset 0 2px 4px rgba(255, 255, 255, 0.2),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.add-task-modal::before {
+  top: -14px;
+}
+
+.add-task-modal::after {
+  bottom: -14px;
+}
+
+.add-task-modal .modal-header {
+  padding: 28px 28px 12px 28px;
+  border-bottom: 2px solid rgba(139, 105, 20, 0.3);
+  margin-bottom: 0;
+}
+
+.add-task-modal .modal-header h2 {
+  font-family: 'MedievalSharp', cursive;
+  font-size: 1.8rem;
+  color: #3d2a1a;
+  text-shadow: 1px 1px 0 rgba(255, 255, 255, 0.5);
+  margin: 0;
+}
+
+.add-task-modal .modal-close {
+  color: #5c4a32;
+  font-size: 28px;
+  font-weight: bold;
+}
+
+.add-task-modal .modal-close:hover {
+  color: #8b4513;
+}
+
+.add-task-modal .modal-form {
+  padding: 20px 28px 28px 28px;
+}
+
+.add-task-modal .form-group span {
+  font-family: 'MedievalSharp', cursive;
+  font-size: 1rem;
+  color: #5c4a32;
+  font-weight: normal;
+}
+
+.add-task-modal .form-group input,
+.add-task-modal .form-group select {
+  background: rgba(255, 255, 255, 0.6);
+  border: 2px solid #8b7355;
+  border-radius: 6px;
+  color: #3d2a1a;
+  font-size: 15px;
+}
+
+.add-task-modal .form-group input:focus,
+.add-task-modal .form-group select:focus {
+  border-color: #8b6914;
+  background: rgba(255, 255, 255, 0.8);
+}
+
+.add-task-modal .form-group input::placeholder {
+  color: #8b7355;
+}
+
+.add-task-modal .form-group select {
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.add-task-modal .form-group select option {
+  background: #f4e8d4;
+  color: #3d2a1a;
+}
+
+.add-task-modal .btn-primary {
+  font-family: 'MedievalSharp', cursive;
+  font-size: 1.2rem;
+  padding: 14px 28px;
+  background: linear-gradient(180deg, #3d2a1a 0%, #2a1a0f 100%);
+  border: 2px solid #8b6914;
+  color: #f4e4bc;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+  margin-top: 8px;
+}
+
+.add-task-modal .btn-primary:hover {
+  background: linear-gradient(180deg, #4d3a2a 0%, #3a2a1f 100%);
+  border-color: #c9a227;
 }
 
 .modal-header {
