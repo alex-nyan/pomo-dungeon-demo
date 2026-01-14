@@ -1,15 +1,16 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { AVATARS, MONSTERS, COIN_REWARDS, DUNGEON_ROOMS } from '../data/constants';
 
 function BattleScreen({ task, gameState, onExit, onComplete }) {
-  const [elapsed, setElapsed] = useState(0);
+  // Initialize elapsed from task's saved timeSpent (for resume functionality)
+  const [elapsed, setElapsed] = useState(task?.timeSpent || 0);
   const [paused, setPaused] = useState(false);
   const [completed, setCompleted] = useState(false);
   const [coinsEarned, setCoinsEarned] = useState(0);
   const [playerSpriteLoaded, setPlayerSpriteLoaded] = useState(null);
   const [monsterSpriteLoaded, setMonsterSpriteLoaded] = useState(null);
   
-  const startTimeRef = useRef(performance.now());
+  const startTimeRef = useRef(performance.now() - (task?.timeSpent || 0));
   const pausedTimeRef = useRef(0);
   const playerCanvasRef = useRef(null);
   const monsterCanvasRef = useRef(null);
@@ -20,6 +21,17 @@ function BattleScreen({ task, gameState, onExit, onComplete }) {
   
   // Get dungeon room from task or use first one as default
   const dungeonRoom = task?.dungeonRoom || DUNGEON_ROOMS[0];
+
+  // Handle flee - save progress and exit
+  const handleFlee = () => {
+    // Pause first
+    if (!paused) {
+      setPaused(true);
+    }
+    // Save the elapsed time to the task
+    gameState.updateTask(task.id, { timeSpent: elapsed });
+    onExit();
+  };
 
   // Timer effect
   useEffect(() => {
@@ -131,7 +143,7 @@ function BattleScreen({ task, gameState, onExit, onComplete }) {
   const progress = elapsed / duration;
 
   return (
-    <div className="screen battle-screen">
+    <div className="screen battle-screen fullscreen">
       <div 
         className="battle-arena"
         style={{
@@ -142,7 +154,7 @@ function BattleScreen({ task, gameState, onExit, onComplete }) {
       >
         <div className="battle-arena-overlay" />
         <header className="battle-header">
-          <button className="btn btn-back" onClick={onExit}>
+          <button className="btn btn-back" onClick={handleFlee}>
             ✕ Flee
           </button>
           <div className="battle-timer">
@@ -157,7 +169,6 @@ function BattleScreen({ task, gameState, onExit, onComplete }) {
               <div className="health-bar player-health">
                 <div className="health-fill" style={{ width: '100%' }} />
               </div>
-              <span className="health-label">YOU</span>
             </div>
             <div className="sprite-container">
               <canvas
@@ -167,8 +178,6 @@ function BattleScreen({ task, gameState, onExit, onComplete }) {
             </div>
           </div>
 
-          <div className="battle-vs">VS</div>
-
           <div className="combatant monster-side">
             <div className="health-bar-container">
               <div className="health-bar monster-health">
@@ -177,7 +186,6 @@ function BattleScreen({ task, gameState, onExit, onComplete }) {
                   style={{ width: `${Math.max(0, (1 - progress) * 100)}%` }}
                 />
               </div>
-              <span className="health-label">{monster.name}</span>
             </div>
             <div className="sprite-container">
               <canvas

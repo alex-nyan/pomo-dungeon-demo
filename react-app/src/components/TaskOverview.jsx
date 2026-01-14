@@ -1,6 +1,32 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { SCREENS, PRIORITY_CONFIG } from '../data/constants';
 import AddTaskModal from './AddTaskModal';
+
+// Generate random but consistent positions for scrolls based on task id
+const getScrollPosition = (taskId, index, total) => {
+  // Use task id to seed a pseudo-random position
+  const seed = taskId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  
+  // Calculate grid-like base positions but with random offsets
+  const cols = Math.min(4, total);
+  const col = index % cols;
+  const row = Math.floor(index / cols);
+  
+  // Base positions as percentages
+  const baseX = 10 + (col * (80 / Math.max(cols - 1, 1)));
+  const baseY = 8 + (row * 35);
+  
+  // Random offsets based on seed
+  const offsetX = ((seed * 17) % 30) - 15;
+  const offsetY = ((seed * 23) % 20) - 10;
+  const rotation = ((seed * 7) % 12) - 6;
+  
+  return {
+    left: `${Math.max(5, Math.min(75, baseX + offsetX))}%`,
+    top: `${Math.max(5, Math.min(65, baseY + offsetY))}%`,
+    rotation: `${rotation}deg`,
+  };
+};
 
 function TaskOverview({ gameState, onNavigate, onStartTask }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -12,6 +38,14 @@ function TaskOverview({ gameState, onNavigate, onStartTask }) {
       const priorityOrder = { urgent: 0, high: 1, medium: 2, low: 3 };
       return priorityOrder[a.priority] - priorityOrder[b.priority];
     });
+
+  // Generate positions for all tasks
+  const taskPositions = useMemo(() => {
+    return activeTasks.reduce((acc, task, index) => {
+      acc[task.id] = getScrollPosition(task.id, index, activeTasks.length);
+      return acc;
+    }, {});
+  }, [activeTasks]);
 
   const formatTimeRemaining = (deadline) => {
     if (!deadline) return null;
@@ -42,13 +76,13 @@ function TaskOverview({ gameState, onNavigate, onStartTask }) {
   };
 
   return (
-    <div className="screen task-overview-screen">
-      <div className="quest-board-container">
+    <div className="screen task-overview-screen fullscreen">
+      <div className="quest-board-container fullscreen">
         <header className="quest-board-header">
           <button className="btn btn-back" onClick={() => onNavigate(SCREENS.HOME)}>
             ← Back
           </button>
-          <h1 className="quest-board-title">Quest Board</h1>
+          <h1 className="quest-board-title">QUEST BOARD</h1>
           <button className="btn btn-add-quest" onClick={() => setIsModalOpen(true)}>
             + New Quest
           </button>
@@ -68,13 +102,17 @@ function TaskOverview({ gameState, onNavigate, onStartTask }) {
                   </div>
                 </div>
               ) : (
-                <div className="quest-scrolls">
-                  {activeTasks.map((task, index) => (
+                <div className="quest-scrolls-board">
+                  {activeTasks.map((task, index) => {
+                    const position = taskPositions[task.id];
+                    return (
                     <div 
                       key={task.id} 
-                      className="quest-scroll-container"
+                      className="quest-scroll-container absolute"
                       style={{ 
-                        '--rotation': `${(index % 5 - 2) * 3}deg`,
+                        left: position.left,
+                        top: position.top,
+                        '--rotation': position.rotation,
                         '--delay': `${index * 0.05}s` 
                       }}
                     >
@@ -131,7 +169,8 @@ function TaskOverview({ gameState, onNavigate, onStartTask }) {
                         </button>
                       </div>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
