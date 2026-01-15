@@ -1,5 +1,5 @@
 import { useRef, useEffect, useState, useCallback } from 'react';
-import { SCREENS, MODE, AVATARS, getRandomDungeonRoom, getRandomMonster } from '../data/constants';
+import { SCREENS, MODE, AVATARS, PRIORITY, getRandomDungeonRoom, getMonsterForPriority } from '../data/constants';
 import AddTaskModal from './AddTaskModal';
 import PomodoroModal from './PomodoroModal';
 
@@ -55,7 +55,8 @@ function HomeScreen({ gameState, onNavigate }) {
   useEffect(() => {
     const avatar = AVATARS[gameState.player.currentAvatar] || AVATARS.knight_1;
     const img = new Image();
-    img.src = `${avatar.basePath}/Idle.png`;
+    const homeBasePath = avatar.homeBasePath || avatar.basePath;
+    img.src = `${homeBasePath}/Idle.png`;
     img.onload = () => setAvatarSprite(img);
   }, [gameState.player.currentAvatar]);
 
@@ -634,7 +635,7 @@ function HomeScreen({ gameState, onNavigate }) {
               timeEstimate: studyMinutes,
               breakMinutes,
               isPomodoro: true,
-              monsterType: getRandomMonster(),
+              monsterType: getMonsterForPriority(PRIORITY.MEDIUM),
               dungeonRoom: getRandomDungeonRoom(),
             };
             setIsPomodoroModalOpen(false);

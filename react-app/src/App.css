@@ -624,6 +624,23 @@ body {
   z-index: 1;
 }
 
+.battle-health-bars {
+  position: absolute;
+  top: 34px;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: space-between;
+  padding: 0 60px;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.health-bar-container.player-bar,
+.health-bar-container.monster-bar {
+  width: 200px;
+}
+
 .battle-timer {
   position: absolute;
   left: 50%;
@@ -666,7 +683,7 @@ body {
 .battle-stage {
   flex: 1;
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-around;
   gap: 40px;
   padding: 40px 80px;
@@ -678,7 +695,9 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 20px;
+  justify-content: flex-end;
+  gap: 16px;
+  min-height: 320px;
 }
 
 .health-bar-container {
@@ -721,10 +740,11 @@ body {
   width: 300px;
   height: 300px;
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: center;
   background: radial-gradient(circle, rgba(100, 255, 182, 0.15) 0%, transparent 70%);
   border-radius: 50%;
+  padding-bottom: 0;
 }
 
 .monster-side .sprite-container {
@@ -736,25 +756,15 @@ body {
   height: 250px;
   image-rendering: pixelated;
   filter: drop-shadow(0 8px 30px rgba(0, 0, 0, 0.6));
+  --sprite-y: 0px;
 }
 
 .player-sprite {
-  animation: playerIdle 1s ease-in-out infinite;
+  transform: translateY(var(--sprite-y));
 }
 
 .monster-sprite {
-  animation: monsterIdle 0.8s ease-in-out infinite;
-  transform: scaleX(-1);
-}
-
-@keyframes playerIdle {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-5px); }
-}
-
-@keyframes monsterIdle {
-  0%, 100% { transform: scaleX(-1) translateY(0); }
-  50% { transform: scaleX(-1) translateY(-8px); }
+  transform: translateY(var(--sprite-y)) scaleX(-1);
 }
 
 /* VS removed from battle screen */

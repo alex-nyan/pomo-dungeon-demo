@@ -1,5 +1,5 @@
 import { useLocalStorage } from './useLocalStorage';
-import { PRIORITY, COIN_REWARDS, getRandomDungeonRoom, getRandomMonster } from '../data/constants';
+import { PRIORITY, COIN_REWARDS, getRandomDungeonRoom, getMonsterForPriority } from '../data/constants';
 
 const STORAGE_KEYS = {
   PLAYER: 'pomoDungeon_player',
@@ -21,13 +21,14 @@ export function useGameState() {
 
   // Create a new task
   const addTask = ({ name, timeEstimate, deadline, priority }) => {
+    const monsterType = getMonsterForPriority(priority || PRIORITY.MEDIUM);
     const newTask = {
       id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
       name: name || 'Unnamed Task',
       timeEstimate: timeEstimate || 25,
       deadline: deadline || null,
       priority: priority || PRIORITY.MEDIUM,
-      monsterType: getRandomMonster(),
+      monsterType,
       dungeonRoom: getRandomDungeonRoom(),
       completed: false,
       createdAt: new Date().toISOString(),

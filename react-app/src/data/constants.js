@@ -3,21 +3,24 @@ export const AVATARS = {
   knight_1: {
     id: "knight_1",
     name: "Knight I",
-    basePath: "/assets/knight-character/Knight_1",
+    basePath: "/assets/knight-character/Spritesheet%20128/Knight_1",
+    homeBasePath: "/assets/knight-character/Knight_1",
     unlocked: true,
     cost: 0,
   },
   knight_2: {
     id: "knight_2",
     name: "Knight II",
-    basePath: "/assets/knight-character/Knight_2",
+    basePath: "/assets/knight-character/Spritesheet%20128/Knight_2",
+    homeBasePath: "/assets/knight-character/Knight_2",
     unlocked: false,
     cost: 100,
   },
   knight_3: {
     id: "knight_3",
     name: "Knight III",
-    basePath: "/assets/knight-character/Knight_3",
+    basePath: "/assets/knight-character/Spritesheet%20128/Knight_3",
+    homeBasePath: "/assets/knight-character/Knight_3",
     unlocked: false,
     cost: 250,
   },
@@ -29,25 +32,33 @@ export const MONSTERS = {
     id: "goblin",
     name: "Goblin",
     basePath: "/assets/monsters/goblin",
-    sprite: "Attack3.png",
+    idleSprite: "Idle.png",
+    attackSprite: "Attack.png",
+    hitSprite: "Take%20Hit.png",
   },
   skeleton: {
     id: "skeleton",
     name: "Skeleton",
     basePath: "/assets/monsters/skeleton",
-    sprite: "Attack3.png",
+    idleSprite: "Idle.png",
+    attackSprite: "Attack.png",
+    hitSprite: "Take%20Hit.png",
   },
   mushroom: {
     id: "mushroom",
     name: "Mushroom",
     basePath: "/assets/monsters/mushroom",
-    sprite: "Attack3.png",
+    idleSprite: "Idle.png",
+    attackSprite: "Attack.png",
+    hitSprite: "Take%20Hit.png",
   },
   flying_eye: {
     id: "flying_eye",
     name: "Flying Eye",
     basePath: "/assets/monsters/flying-eye",
-    sprite: "Attack3.png",
+    idleSprite: "Flight.png",
+    attackSprite: "Attack.png",
+    hitSprite: "Take%20Hit.png",
   },
 };
 
@@ -105,7 +116,17 @@ export const getRandomDungeonRoom = () => {
 };
 
 // Get random monster type
-export const getRandomMonster = () => {
-  const monsterKeys = Object.keys(MONSTERS);
-  return monsterKeys[Math.floor(Math.random() * monsterKeys.length)];
+export const getMonsterForPriority = (priority) => {
+  switch (priority) {
+    case PRIORITY.LOW:
+      return "mushroom";
+    case PRIORITY.MEDIUM:
+      return "flying_eye";
+    case PRIORITY.HIGH:
+      return "goblin";
+    case PRIORITY.URGENT:
+      return "skeleton";
+    default:
+      return "mushroom";
+  }
 };
