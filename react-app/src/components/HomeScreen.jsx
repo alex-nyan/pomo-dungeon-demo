@@ -1,5 +1,6 @@
 import { useRef, useEffect, useState, useCallback } from 'react';
 import { SCREENS, MODE, AVATARS, PRIORITY, getRandomDungeonRoom, getMonsterForPriority } from '../data/constants';
+import { useLocalStorage } from '../hooks/useLocalStorage';
 import AddTaskModal from './AddTaskModal';
 import PomodoroModal from './PomodoroModal';
 
@@ -12,6 +13,10 @@ function HomeScreen({ gameState, onNavigate }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isPomodoroModalOpen, setIsPomodoroModalOpen] = useState(false);
   const [avatarSprite, setAvatarSprite] = useState(null);
+  const [googleUser, setGoogleUser] = useLocalStorage('pomoDungeon_googleUser', null);
+  const [authError, setAuthError] = useState('');
+  const googleInitRef = useRef(false);
+  const tokenClientRef = useRef(null);
   
   // Gate state
   const gateRef = useRef({
@@ -59,6 +64,97 @@ function HomeScreen({ gameState, onNavigate }) {
     img.src = `${homeBasePath}/Idle.png`;
     img.onload = () => setAvatarSprite(img);
   }, [gameState.player.currentAvatar]);
+
+  const parseJwt = (token) => {
+    try {
+      const base64Url = token.split('.')[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const jsonPayload = decodeURIComponent(
+        atob(base64)
+          .split('')
+          .map((c) => `%${`00${c.charCodeAt(0).toString(16)}`.slice(-2)}`)
+          .join('')
+      );
+      return JSON.parse(jsonPayload);
+    } catch (error) {
+      return null;
+    }
+  };
+
+  useEffect(() => {
+    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+    if (!clientId) return;
+
+    let attempts = 0;
+    const maxAttempts = 20;
+
+    const initGoogle = () => {
+      if (googleInitRef.current) return;
+      if (!window.google?.accounts?.oauth2) return;
+      googleInitRef.current = true;
+    };
+
+    const tryInit = () => {
+      attempts += 1;
+      initGoogle();
+      if (!googleInitRef.current && attempts < maxAttempts) {
+        setTimeout(tryInit, 200);
+      }
+    };
+
+    tryInit();
+  }, []);
+
+  const handleGoogleSignIn = () => {
+    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+    if (!clientId) {
+      setAuthError('Missing Google client ID.');
+      return;
+    }
+    if (!window.google?.accounts?.oauth2) {
+      setAuthError('Google sign-in not ready yet.');
+      return;
+    }
+    setAuthError('');
+
+    if (!tokenClientRef.current) {
+      tokenClientRef.current = window.google.accounts.oauth2.initTokenClient({
+        client_id: clientId,
+        scope: 'profile email',
+        callback: async (tokenResponse) => {
+          if (!tokenResponse?.access_token) {
+            setAuthError('Google sign-in failed. Try again.');
+            return;
+          }
+          try {
+            const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+              headers: { Authorization: `Bearer ${tokenResponse.access_token}` },
+            });
+            if (!res.ok) throw new Error('Failed to fetch profile');
+            const data = await res.json();
+            setAuthError('');
+            setGoogleUser({
+              name: data.name,
+              email: data.email,
+              picture: data.picture,
+            });
+          } catch (error) {
+            setAuthError('Could not load Google profile.');
+          }
+        },
+      });
+    }
+
+    tokenClientRef.current.requestAccessToken({ prompt: 'consent' });
+  };
+
+  const handleGoogleSignOut = () => {
+    setGoogleUser(null);
+    setAuthError('');
+    if (window.google?.accounts?.id) {
+      window.google.accounts.id.disableAutoSelect();
+    }
+  };
 
   // Initialize rain
   useEffect(() => {
@@ -580,7 +676,7 @@ function HomeScreen({ gameState, onNavigate }) {
       if (mode === MODE.STOPWATCH) {
         setIsPomodoroModalOpen(true);
       } else {
-        onNavigate(SCREENS.TASKS);
+      onNavigate(SCREENS.TASKS);
       }
       return;
     }
@@ -614,6 +710,27 @@ function HomeScreen({ gameState, onNavigate }) {
               + Add Quest
             </button>
           )}
+          <div className="auth-panel">
+            {googleUser ? (
+              <div className="auth-user">
+                {googleUser.picture && (
+                  <img className="auth-avatar" src={googleUser.picture} alt={googleUser.name || 'User'} />
+                )}
+                <div className="auth-details">
+                  <span className="auth-name">{googleUser.name || 'Adventurer'}</span>
+                </div>
+              </div>
+            ) : (
+              <button
+                className="btn-medieval btn-auth btn-auth-icon"
+                onClick={handleGoogleSignIn}
+                aria-label="Sign in with Google"
+              >
+                <span className="google-icon">G</span>
+              </button>
+            )}
+            {authError && <div className="auth-error">{authError}</div>}
+          </div>
         </div>
 
         <AddTaskModal

@@ -18,7 +18,7 @@ function PomodoroModal({ isOpen, onClose, onSubmit }) {
     <div className="modal-overlay">
       <div className="modal add-task-modal">
         <div className="modal-header">
-          <h2>Red Moon Pomodoro</h2>
+          <h2>Pomodoro Settings</h2>
           <button className="modal-close" onClick={onClose}>
             &times;
           </button>

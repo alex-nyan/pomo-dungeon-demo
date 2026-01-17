@@ -34,6 +34,7 @@ export const MONSTERS = {
     basePath: "/assets/monsters/goblin",
     idleSprite: "Idle.png",
     attackSprite: "Attack.png",
+    walkSprite: "Run.png",
     hitSprite: "Take%20Hit.png",
   },
   skeleton: {
@@ -42,6 +43,7 @@ export const MONSTERS = {
     basePath: "/assets/monsters/skeleton",
     idleSprite: "Idle.png",
     attackSprite: "Attack.png",
+    walkSprite: "Walk.png",
     hitSprite: "Take%20Hit.png",
   },
   mushroom: {
@@ -50,6 +52,7 @@ export const MONSTERS = {
     basePath: "/assets/monsters/mushroom",
     idleSprite: "Idle.png",
     attackSprite: "Attack.png",
+    walkSprite: "Run.png",
     hitSprite: "Take%20Hit.png",
   },
   flying_eye: {
@@ -58,6 +61,7 @@ export const MONSTERS = {
     basePath: "/assets/monsters/flying-eye",
     idleSprite: "Flight.png",
     attackSprite: "Attack.png",
+    walkSprite: "Flight.png",
     hitSprite: "Take%20Hit.png",
   },
 };
