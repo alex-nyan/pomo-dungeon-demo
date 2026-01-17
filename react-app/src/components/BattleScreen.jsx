@@ -10,9 +10,11 @@ function BattleScreen({ task, gameState, onExit, onComplete }) {
   const [playerIdleSprite, setPlayerIdleSprite] = useState(null);
   const [playerRunSprite, setPlayerRunSprite] = useState(null);
   const [playerAttackSprites, setPlayerAttackSprites] = useState([]);
+  const [playerDefendSprite, setPlayerDefendSprite] = useState(null);
   const [monsterIdleSprite, setMonsterIdleSprite] = useState(null);
   const [monsterAttackSprite, setMonsterAttackSprite] = useState(null);
   const [monsterHitSprite, setMonsterHitSprite] = useState(null);
+  const [monsterWalkSprite, setMonsterWalkSprite] = useState(null);
   const [phase, setPhase] = useState('study');
   
   const startTimeRef = useRef(performance.now() - (task?.timeSpent || 0));
@@ -20,6 +22,7 @@ function BattleScreen({ task, gameState, onExit, onComplete }) {
   const playerCanvasRef = useRef(null);
   const monsterCanvasRef = useRef(null);
   const playerSideRef = useRef(null);
+  const monsterSideRef = useRef(null);
   const playerAttackStartRef = useRef(0);
   const playerAttackIndexRef = useRef(0);
   const monsterAttackStartRef = useRef(0);
@@ -31,14 +34,15 @@ function BattleScreen({ task, gameState, onExit, onComplete }) {
     (phase === 'break' ? breakMinutes : studyMinutes) * 60 * 1000;
   const avatar = AVATARS[gameState.player.currentAvatar] || AVATARS.knight_1;
   const monster = MONSTERS[task?.monsterType] || MONSTERS.goblin;
-  const PLAYER_SIZE = 140;
-  const MONSTER_SIZE = 170;
+  const PLAYER_SIZE = 500;
+  const MONSTER_SIZE = 500;
   const ATTACK_COOLDOWN_MS = 5000;
   const FRAME_DURATION_MS = 120;
   const ATTACK_DELAY_MS = 200;
-  const RUN_OFFSET_PX = 240;
-  const PLAYER_Y_OFFSET = 100;
-  const MONSTER_Y_OFFSET = 150;
+  const RUN_OFFSET_PX = 0;
+  const MONSTER_RUN_OFFSET_PX = 250;
+  const PLAYER_Y_OFFSET = 0;
+  const MONSTER_Y_OFFSET = 100;
   
   // Get dungeon room from task or use first one as default
   const dungeonRoom = task?.dungeonRoom || DUNGEON_ROOMS[0];
@@ -91,11 +95,13 @@ function BattleScreen({ task, gameState, onExit, onComplete }) {
   const monsterAttackSpriteName = monster.attackSprite || monster.sprite;
   const monsterIdleSpriteName = monster.idleSprite || monsterAttackSpriteName;
   const monsterHitSpriteName = monster.hitSprite || monsterAttackSpriteName;
+  const monsterWalkSpriteName = monster.walkSprite || monsterIdleSpriteName;
 
   // Load player sprites
   useEffect(() => {
     loadImage(`${avatar.basePath}/Idle.png`, setPlayerIdleSprite);
     loadImage(`${avatar.basePath}/Run.png`, setPlayerRunSprite);
+    loadImage(`${avatar.basePath}/Defend.png`, setPlayerDefendSprite);
     Promise.all([
       `${avatar.basePath}/Attack 1.png`,
       `${avatar.basePath}/Attack 2.png`,
@@ -116,7 +122,8 @@ function BattleScreen({ task, gameState, onExit, onComplete }) {
     loadImage(`${monster.basePath}/${monsterAttackSpriteName}`, setMonsterAttackSprite);
     loadImage(`${monster.basePath}/${monsterIdleSpriteName}`, setMonsterIdleSprite);
     loadImage(`${monster.basePath}/${monsterHitSpriteName}`, setMonsterHitSprite);
-  }, [monster.basePath, monsterAttackSpriteName, monsterIdleSpriteName, monsterHitSpriteName]);
+    loadImage(`${monster.basePath}/${monsterWalkSpriteName}`, setMonsterWalkSprite);
+  }, [monster.basePath, monsterAttackSpriteName, monsterIdleSpriteName, monsterHitSpriteName, monsterWalkSpriteName]);
 
   const getFrameCount = (img) => {
     if (!img) return 1;
@@ -155,11 +162,12 @@ function BattleScreen({ task, gameState, onExit, onComplete }) {
   };
 
   useEffect(() => {
-    if (!playerIdleSprite || !playerRunSprite || playerAttackSprites.length === 0 || !monsterAttackSprite) return;
+    if (!playerIdleSprite || !playerRunSprite || !playerDefendSprite || playerAttackSprites.length === 0 || !monsterAttackSprite) return;
 
     const playerCanvas = playerCanvasRef.current;
     const monsterCanvas = monsterCanvasRef.current;
     const playerSide = playerSideRef.current;
+    const monsterSide = monsterSideRef.current;
 
     drawFrame(playerCanvas, playerIdleSprite, 0, PLAYER_SIZE);
     drawFrame(monsterCanvas, monsterAttackSprite, 0, MONSTER_SIZE);
@@ -171,12 +179,15 @@ function BattleScreen({ task, gameState, onExit, onComplete }) {
     const runFrames = getFrameCount(playerRunSprite);
     const monsterFrames = getFrameCount(monsterAttackSprite);
     const monsterHitFrames = getFrameCount(monsterHitSprite || monsterAttackSprite);
+    const monsterWalkFrames = getFrameCount(monsterWalkSprite || monsterIdleSprite || monsterAttackSprite);
     const runDuration = runFrames * FRAME_DURATION_MS;
     const getAttackDuration = (sprite) => getFrameCount(sprite) * FRAME_DURATION_MS;
     const maxAttackDuration = Math.max(
       ...playerAttackSprites.map((sprite) => getAttackDuration(sprite))
     );
     const monsterAttackDuration = monsterFrames * FRAME_DURATION_MS;
+    const monsterWalkDuration = monsterWalkFrames * FRAME_DURATION_MS;
+    const monsterReturnDuration = monsterWalkDuration;
     const playerReturnDuration = runDuration;
     const monsterAttackStartDelay = runDuration + maxAttackDuration + playerReturnDuration + ATTACK_DELAY_MS;
 
@@ -225,8 +236,6 @@ function BattleScreen({ task, gameState, onExit, onComplete }) {
           ? playerRunSprite
           : playerIdleSprite;
 
-      drawFrame(playerCanvas, playerSheet, playerFrame, PLAYER_SIZE);
-
       if (playerSide) {
         const runProgress = isPlayerRunningOut
           ? Math.min(1, playerElapsed / runDuration)
@@ -239,23 +248,57 @@ function BattleScreen({ task, gameState, onExit, onComplete }) {
       }
 
       const monsterElapsed = now - monsterAttackStartRef.current;
-      const isMonsterAttacking = monsterElapsed >= 0 && monsterElapsed < monsterAttackDuration;
+      const isMonsterWalking = monsterElapsed >= 0 && monsterElapsed < monsterWalkDuration;
+      const isMonsterAttacking = monsterElapsed >= monsterWalkDuration && monsterElapsed < monsterWalkDuration + monsterAttackDuration;
+      const isMonsterReturning =
+        monsterElapsed >= monsterWalkDuration + monsterAttackDuration &&
+        monsterElapsed < monsterWalkDuration + monsterAttackDuration + monsterReturnDuration;
+      const monsterAttackProgress = isMonsterAttacking
+        ? Math.min(1, Math.max(0, (monsterElapsed - monsterWalkDuration) / monsterAttackDuration))
+        : 0;
       const attackProgress = isPlayerAttacking
         ? Math.min(1, Math.max(0, (playerElapsed - runDuration) / playerAttackDuration))
         : 0;
       const showMonsterHit = isPlayerAttacking && attackProgress >= 0.35;
-      const monsterFrame = isMonsterAttacking
-        ? Math.floor(monsterElapsed / FRAME_DURATION_MS) % monsterFrames
-        : showMonsterHit
-          ? Math.floor((playerElapsed - runDuration) / FRAME_DURATION_MS) % monsterHitFrames
-          : getIdleFrame(now, monsterIdleSprite || monsterAttackSprite);
+      const monsterFrame = isMonsterWalking
+        ? Math.floor(monsterElapsed / FRAME_DURATION_MS) % monsterWalkFrames
+        : isMonsterAttacking
+          ? Math.floor((monsterElapsed - monsterWalkDuration) / FRAME_DURATION_MS) % monsterFrames
+          : showMonsterHit
+            ? Math.floor((playerElapsed - runDuration) / FRAME_DURATION_MS) % monsterHitFrames
+            : getIdleFrame(now, monsterIdleSprite || monsterAttackSprite);
+
+      if (monsterSide) {
+        const monsterProgress = isMonsterWalking
+          ? Math.min(1, monsterElapsed / monsterWalkDuration)
+          : isMonsterAttacking
+            ? 1
+            : isMonsterReturning
+              ? Math.max(0, 1 - (monsterElapsed - monsterWalkDuration - monsterAttackDuration) / monsterReturnDuration)
+              : 0;
+        monsterSide.style.transform = `translateX(${-monsterProgress * MONSTER_RUN_OFFSET_PX}px)`;
+      }
+
+      const isPlayerDefending = isMonsterAttacking && !isPlayerAttacking && !isPlayerRunningOut && !isPlayerReturning;
+      const isPlayerHit = isMonsterAttacking && monsterAttackProgress >= 0.35 && monsterAttackProgress <= 0.6;
+      if (playerCanvas) {
+        playerCanvas.dataset.hit = isPlayerHit ? '1' : '0';
+      }
+      if (isPlayerDefending) {
+        const defendFrame = Math.floor((monsterElapsed - monsterWalkDuration) / FRAME_DURATION_MS) % getFrameCount(playerDefendSprite);
+        drawFrame(playerCanvas, playerDefendSprite, defendFrame, PLAYER_SIZE);
+      } else {
+        drawFrame(playerCanvas, playerSheet, playerFrame, PLAYER_SIZE);
+      }
       drawFrame(
         monsterCanvas,
-        isMonsterAttacking
-          ? monsterAttackSprite
-          : showMonsterHit
-            ? (monsterHitSprite || monsterAttackSprite)
-            : (monsterIdleSprite || monsterAttackSprite),
+        isMonsterWalking
+          ? (monsterWalkSprite || monsterIdleSprite || monsterAttackSprite)
+          : isMonsterAttacking
+            ? monsterAttackSprite
+            : showMonsterHit
+              ? (monsterHitSprite || monsterAttackSprite)
+              : (monsterIdleSprite || monsterAttackSprite),
         monsterFrame,
         MONSTER_SIZE
       );
@@ -272,9 +315,11 @@ function BattleScreen({ task, gameState, onExit, onComplete }) {
     playerIdleSprite,
     playerRunSprite,
     playerAttackSprites,
+    playerDefendSprite,
     monsterIdleSprite,
     monsterAttackSprite,
     monsterHitSprite,
+    monsterWalkSprite,
     paused,
     completed,
   ]);
@@ -316,6 +361,7 @@ function BattleScreen({ task, gameState, onExit, onComplete }) {
   const monsterHealth = isPomodoro && phase === 'break' ? 0 : Math.max(0, (1 - progress) * 100);
   const playerHealth = isPomodoro && phase === 'break' ? Math.max(0, (1 - progress) * 100) : 100;
   const phaseLabel = isPomodoro ? (phase === 'break' ? 'Break' : 'Study') : null;
+  const taskLabel = task?.name === 'Red Moon Pomodoro' ? '' : (task?.name || 'Task');
 
   return (
     <div className="screen battle-screen fullscreen">
@@ -329,14 +375,10 @@ function BattleScreen({ task, gameState, onExit, onComplete }) {
       >
         <div className="battle-arena-overlay" />
         <header className="battle-header">
-          <button className="btn btn-back" onClick={handleFlee}>
-            ✕ Flee
-          </button>
           <div className="battle-timer">
             <span>{formatTime(remaining)}</span>
-            {phaseLabel && <div className="battle-phase">{phaseLabel}</div>}
           </div>
-          <div className="battle-task-name">{task?.name || 'Task'}</div>
+          {taskLabel && <div className="battle-task-name">{taskLabel}</div>}
         </header>
 
         <div className="battle-health-bars">
@@ -361,28 +403,38 @@ function BattleScreen({ task, gameState, onExit, onComplete }) {
               <canvas
                 ref={playerCanvasRef}
                 className="battle-sprite player-sprite"
-                style={{ '--sprite-y': `${PLAYER_Y_OFFSET}px` }}
+                style={{
+                  '--sprite-y': `${PLAYER_Y_OFFSET}px`,
+                  '--sprite-size': `${PLAYER_SIZE}px`,
+                }}
               />
             </div>
           </div>
 
-          <div className="combatant monster-side">
+        <div className="combatant monster-side" ref={monsterSideRef}>
             <div className="sprite-container">
               <canvas
                 ref={monsterCanvasRef}
                 className="battle-sprite monster-sprite"
-                style={{ '--sprite-y': `${MONSTER_Y_OFFSET}px` }}
+                style={{
+                  '--sprite-y': `${MONSTER_Y_OFFSET}px`,
+                  '--sprite-size': `${MONSTER_SIZE}px`,
+                }}
               />
             </div>
           </div>
         </div>
 
+        <button className="btn btn-flee" onClick={handleFlee}>
+          ✕ Flee
+        </button>
+
         <div className="battle-controls">
-          <button className="btn btn-battle" onClick={handlePause}>
-            {paused ? '▶ Resume' : '⏸ Pause'}
+          <button className="btn btn-flee btn-icon" onClick={handlePause} aria-label="Pause">
+            {paused ? '▶' : '⏸'}
           </button>
-          <button className="btn btn-primary btn-battle" onClick={handleComplete}>
-            ✓ Complete
+          <button className="btn btn-flee btn-icon" onClick={handleComplete} aria-label="Complete">
+            ✓
           </button>
         </div>
 
