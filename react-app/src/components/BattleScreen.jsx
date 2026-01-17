@@ -34,15 +34,15 @@ function BattleScreen({ task, gameState, onExit, onComplete }) {
     (phase === 'break' ? breakMinutes : studyMinutes) * 60 * 1000;
   const avatar = AVATARS[gameState.player.currentAvatar] || AVATARS.knight_1;
   const monster = MONSTERS[task?.monsterType] || MONSTERS.goblin;
-  const PLAYER_SIZE = 500;
-  const MONSTER_SIZE = 500;
+  const PLAYER_SIZE = 300;
+  const MONSTER_SIZE = 350;
   const ATTACK_COOLDOWN_MS = 5000;
   const FRAME_DURATION_MS = 120;
   const ATTACK_DELAY_MS = 200;
-  const RUN_OFFSET_PX = 0;
+  const RUN_OFFSET_PX = 300;
   const MONSTER_RUN_OFFSET_PX = 250;
   const PLAYER_Y_OFFSET = 0;
-  const MONSTER_Y_OFFSET = 100;
+  const MONSTER_Y_OFFSET = 120;
   
   // Get dungeon room from task or use first one as default
   const dungeonRoom = task?.dungeonRoom || DUNGEON_ROOMS[0];
@@ -361,8 +361,6 @@ function BattleScreen({ task, gameState, onExit, onComplete }) {
   const monsterHealth = isPomodoro && phase === 'break' ? 0 : Math.max(0, (1 - progress) * 100);
   const playerHealth = isPomodoro && phase === 'break' ? Math.max(0, (1 - progress) * 100) : 100;
   const phaseLabel = isPomodoro ? (phase === 'break' ? 'Break' : 'Study') : null;
-  const taskLabel = task?.name === 'Red Moon Pomodoro' ? '' : (task?.name || 'Task');
-
   return (
     <div className="screen battle-screen fullscreen">
       <div 
@@ -378,7 +376,6 @@ function BattleScreen({ task, gameState, onExit, onComplete }) {
           <div className="battle-timer">
             <span>{formatTime(remaining)}</span>
           </div>
-          {taskLabel && <div className="battle-task-name">{taskLabel}</div>}
         </header>
 
         <div className="battle-health-bars">
