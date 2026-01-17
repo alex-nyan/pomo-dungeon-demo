@@ -691,6 +691,40 @@ function HomeScreen({ gameState, onNavigate }) {
 
   return (
     <div className="home-screen">
+      <div className="home-navbar">
+        <div className="medieval-navbar">
+          <div className="navbar-section navbar-left">
+            {mode === MODE.TASKS && (
+              <button className="btn-medieval btn-auth navbar-btn" onClick={() => setIsModalOpen(true)}>
+                + Add Quest
+              </button>
+            )}
+          </div>
+          <div className="navbar-section navbar-right">
+            <div className="auth-panel navbar-auth">
+              {googleUser ? (
+                <div className="auth-user">
+                  {googleUser.picture && (
+                    <img className="auth-avatar" src={googleUser.picture} alt={googleUser.name || 'User'} />
+                  )}
+                  <div className="auth-details">
+                    <span className="auth-name">{googleUser.name || 'Adventurer'}</span>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  className="btn-medieval btn-auth btn-auth-icon navbar-auth-btn"
+                  onClick={handleGoogleSignIn}
+                  aria-label="Sign in with Google"
+                >
+                  <span className="google-icon">G</span>
+                </button>
+              )}
+              {authError && <div className="auth-error">{authError}</div>}
+            </div>
+          </div>
+        </div>
+      </div>
       <div className="fullscreen-canvas-container">
         <canvas
           ref={canvasRef}
@@ -703,35 +737,6 @@ function HomeScreen({ gameState, onNavigate }) {
           }}
           onClick={handleClick}
         />
-
-        <div className="canvas-overlay-ui">
-          {mode === MODE.TASKS && (
-            <button className="btn-medieval" onClick={() => setIsModalOpen(true)}>
-              + Add Quest
-            </button>
-          )}
-          <div className="auth-panel">
-            {googleUser ? (
-              <div className="auth-user">
-                {googleUser.picture && (
-                  <img className="auth-avatar" src={googleUser.picture} alt={googleUser.name || 'User'} />
-                )}
-                <div className="auth-details">
-                  <span className="auth-name">{googleUser.name || 'Adventurer'}</span>
-                </div>
-              </div>
-            ) : (
-              <button
-                className="btn-medieval btn-auth btn-auth-icon"
-                onClick={handleGoogleSignIn}
-                aria-label="Sign in with Google"
-              >
-                <span className="google-icon">G</span>
-              </button>
-            )}
-            {authError && <div className="auth-error">{authError}</div>}
-          </div>
-        </div>
 
         <AddTaskModal
           isOpen={isModalOpen}
