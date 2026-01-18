@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { SCREENS } from './data/constants';
 import { useGameState } from './hooks/useGameState';
 import HomeScreen from './components/HomeScreen';
@@ -11,6 +11,37 @@ function App() {
   const [currentScreen, setCurrentScreen] = useState(SCREENS.HOME);
   const [selectedTask, setSelectedTask] = useState(null);
   const gameState = useGameState();
+
+  useEffect(() => {
+    const handleWheel = (event) => {
+      if (event.ctrlKey || event.metaKey) {
+        event.preventDefault();
+      }
+    };
+    const handleKeyDown = (event) => {
+      if (!(event.ctrlKey || event.metaKey)) return;
+      if (['+', '-', '=', '0'].includes(event.key)) {
+        event.preventDefault();
+      }
+    };
+    const handleGesture = (event) => {
+      event.preventDefault();
+    };
+
+    document.addEventListener('wheel', handleWheel, { passive: false });
+    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('gesturestart', handleGesture);
+    document.addEventListener('gesturechange', handleGesture);
+    document.addEventListener('gestureend', handleGesture);
+
+    return () => {
+      document.removeEventListener('wheel', handleWheel);
+      document.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('gesturestart', handleGesture);
+      document.removeEventListener('gesturechange', handleGesture);
+      document.removeEventListener('gestureend', handleGesture);
+    };
+  }, []);
 
   const navigateTo = (screen, task = null) => {
     if (task) setSelectedTask(task);
