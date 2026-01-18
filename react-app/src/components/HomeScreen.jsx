@@ -20,6 +20,14 @@ function HomeScreen({ gameState, onNavigate }) {
   const tokenClientRef = useRef(null);
   const [isAuthMenuOpen, setIsAuthMenuOpen] = useState(false);
   const authMenuRef = useRef(null);
+  const getGoogleAuthHint = () => {
+    const { protocol, hostname } = window.location;
+    const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1';
+    if (protocol !== 'https:' && !isLocalhost) {
+      return 'Google sign-in requires HTTPS (or localhost). Use HTTPS or a tunnel and add this origin in Google Cloud.';
+    }
+    return 'Make sure this origin is listed under Authorized JavaScript origins in Google Cloud.';
+  };
   
   // Gate state
   const gateRef = useRef({
@@ -144,6 +152,10 @@ function HomeScreen({ gameState, onNavigate }) {
           } catch (error) {
             setAuthError('Could not load Google profile.');
           }
+        },
+        error_callback: (error) => {
+          const errorType = error?.type || error?.error || 'unknown';
+          setAuthError(`Google sign-in error (${errorType}). ${getGoogleAuthHint()}`);
         },
       });
     }
