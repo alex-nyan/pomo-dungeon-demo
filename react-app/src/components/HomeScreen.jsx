@@ -14,9 +14,20 @@ function HomeScreen({ gameState, onNavigate }) {
   const [isPomodoroModalOpen, setIsPomodoroModalOpen] = useState(false);
   const [avatarSprite, setAvatarSprite] = useState(null);
   const [googleUser, setGoogleUser] = useLocalStorage('pomoDungeon_googleUser', null);
+  const [streakDays] = useLocalStorage('pomoDungeon_streakDays', 0);
   const [authError, setAuthError] = useState('');
   const googleInitRef = useRef(false);
   const tokenClientRef = useRef(null);
+  const [isAuthMenuOpen, setIsAuthMenuOpen] = useState(false);
+  const authMenuRef = useRef(null);
+  const getGoogleAuthHint = () => {
+    const { protocol, hostname } = window.location;
+    const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1';
+    if (protocol !== 'https:' && !isLocalhost) {
+      return 'Google sign-in requires HTTPS (or localhost). Use HTTPS or a tunnel and add this origin in Google Cloud.';
+    }
+    return 'Make sure this origin is listed under Authorized JavaScript origins in Google Cloud.';
+  };
   
   // Gate state
   const gateRef = useRef({
@@ -142,6 +153,10 @@ function HomeScreen({ gameState, onNavigate }) {
             setAuthError('Could not load Google profile.');
           }
         },
+        error_callback: (error) => {
+          const errorType = error?.type || error?.error || 'unknown';
+          setAuthError(`Google sign-in error (${errorType}). ${getGoogleAuthHint()}`);
+        },
       });
     }
 
@@ -151,10 +166,33 @@ function HomeScreen({ gameState, onNavigate }) {
   const handleGoogleSignOut = () => {
     setGoogleUser(null);
     setAuthError('');
+    setIsAuthMenuOpen(false);
     if (window.google?.accounts?.id) {
       window.google.accounts.id.disableAutoSelect();
     }
   };
+
+  useEffect(() => {
+    if (!isAuthMenuOpen) return;
+
+    const handleOutsideClick = (event) => {
+      if (!authMenuRef.current) return;
+      if (!authMenuRef.current.contains(event.target)) {
+        setIsAuthMenuOpen(false);
+      }
+    };
+
+    const handleEscape = (event) => {
+      if (event.key === 'Escape') setIsAuthMenuOpen(false);
+    };
+
+    document.addEventListener('mousedown', handleOutsideClick);
+    document.addEventListener('keydown', handleEscape);
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [isAuthMenuOpen]);
 
   // Initialize rain
   useEffect(() => {
@@ -691,6 +729,88 @@ function HomeScreen({ gameState, onNavigate }) {
 
   return (
     <div className="home-screen">
+      <div className="home-navbar">
+        <div className="medieval-navbar">
+          <div className="navbar-section navbar-left">
+            {mode === MODE.TASKS && (
+              <button className="btn-medieval btn-auth navbar-btn" onClick={() => setIsModalOpen(true)}>
+                + Add Quest
+              </button>
+            )}
+          </div>
+          <div className="navbar-section navbar-right">
+            <div className="auth-panel navbar-auth" ref={authMenuRef}>
+              <div className="streak-badge" aria-label={`Streak: ${streakDays} days`}>
+                <svg className="streak-icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M12.6 2.4c.2 2-1 3.4-2.2 4.7-1.2 1.3-2.5 2.8-2.5 5.1 0 3 2.2 5.1 5 5.1s5-2.1 5-5.1c0-2.4-1.4-4-2.8-5.6-.5-.6-1.1-1.3-1.5-2.1-.6 1.1-.7 2.1-.9 2.9-.3 1.2-.6 2.3-2 3.3.2-1.8 1.1-3.2 1.9-4.3 1-1.4 1.8-2.6 1.9-4z" />
+                </svg>
+                <span className="streak-count">{streakDays}</span>
+              </div>
+              {googleUser ? (
+                <div className="auth-menu">
+                  <button
+                    className="auth-avatar-btn"
+                    onClick={() => setIsAuthMenuOpen((prev) => !prev)}
+                    aria-label="Open user menu"
+                    type="button"
+                  >
+                    <img
+                      className="auth-avatar-img"
+                      src={googleUser.picture}
+                      alt={googleUser.name || 'User'}
+                      referrerPolicy="no-referrer"
+                    />
+                  </button>
+                  {isAuthMenuOpen && (
+                    <div className="auth-dropdown" role="menu">
+                      <button
+                        className="auth-dropdown-item"
+                        type="button"
+                        onClick={() => setIsAuthMenuOpen(false)}
+                      >
+                        Settings
+                      </button>
+                      <button
+                        className="auth-dropdown-item"
+                        type="button"
+                        onClick={() => {
+                          setIsAuthMenuOpen(false);
+                          onNavigate(SCREENS.COLLECTIONS);
+                        }}
+                      >
+                        Collectibles
+                      </button>
+                      <button
+                        className="auth-dropdown-item"
+                        type="button"
+                        onClick={() => setIsAuthMenuOpen(false)}
+                      >
+                        Records
+                      </button>
+                      <button
+                        className="auth-dropdown-item"
+                        type="button"
+                        onClick={handleGoogleSignOut}
+                      >
+                        Sign out
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <button
+                  className="btn-medieval btn-auth btn-auth-icon navbar-auth-btn"
+                  onClick={handleGoogleSignIn}
+                  aria-label="Sign in with Google"
+                >
+                  <span className="google-icon">G</span>
+                </button>
+              )}
+              {authError && <div className="auth-error">{authError}</div>}
+            </div>
+          </div>
+        </div>
+      </div>
       <div className="fullscreen-canvas-container">
         <canvas
           ref={canvasRef}
@@ -703,35 +823,6 @@ function HomeScreen({ gameState, onNavigate }) {
           }}
           onClick={handleClick}
         />
-
-        <div className="canvas-overlay-ui">
-          {mode === MODE.TASKS && (
-            <button className="btn-medieval" onClick={() => setIsModalOpen(true)}>
-              + Add Quest
-            </button>
-          )}
-          <div className="auth-panel">
-            {googleUser ? (
-              <div className="auth-user">
-                {googleUser.picture && (
-                  <img className="auth-avatar" src={googleUser.picture} alt={googleUser.name || 'User'} />
-                )}
-                <div className="auth-details">
-                  <span className="auth-name">{googleUser.name || 'Adventurer'}</span>
-                </div>
-              </div>
-            ) : (
-              <button
-                className="btn-medieval btn-auth btn-auth-icon"
-                onClick={handleGoogleSignIn}
-                aria-label="Sign in with Google"
-              >
-                <span className="google-icon">G</span>
-              </button>
-            )}
-            {authError && <div className="auth-error">{authError}</div>}
-          </div>
-        </div>
 
         <AddTaskModal
           isOpen={isModalOpen}

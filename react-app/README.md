@@ -14,3 +14,15 @@ The React Compiler is not enabled on this template because of its impact on dev 
 ## Expanding the ESLint configuration
 
 If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+
+## Google Sign-In (dev)
+
+1. Create a Google OAuth Client ID (Web).
+2. Add your dev origins under **Authorized JavaScript origins**, including:
+   - `http://localhost:5173`
+   - `http://127.0.0.1:5173`
+   - Any HTTPS dev tunnel or custom domain you use.
+3. Add a `.env.local` file with:
+   - `VITE_GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com`
+
+Note: Google sign-in requires HTTPS for non-localhost origins.
