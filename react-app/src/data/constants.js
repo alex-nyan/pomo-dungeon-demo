@@ -36,6 +36,7 @@ export const MONSTERS = {
     attackSprite: "Attack.png",
     walkSprite: "Run.png",
     hitSprite: "Take%20Hit.png",
+    walkFrameDurationMs: 90,
   },
   skeleton: {
     id: "skeleton",
@@ -54,6 +55,7 @@ export const MONSTERS = {
     attackSprite: "Attack.png",
     walkSprite: "Run.png",
     hitSprite: "Take%20Hit.png",
+    walkFrameDurationMs: 100,
   },
   flying_eye: {
     id: "flying_eye",
@@ -63,6 +65,7 @@ export const MONSTERS = {
     attackSprite: "Attack.png",
     walkSprite: "Flight.png",
     hitSprite: "Take%20Hit.png",
+    walkFrameDurationMs: 90,
   },
 };
 

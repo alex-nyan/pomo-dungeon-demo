@@ -47,7 +47,7 @@ function BattleScreen({ task, gameState, onExit, onComplete }) {
   const FRAME_DURATION_MS = 120;
   const ATTACK_DELAY_MS = 200;
   const RUN_OFFSET_PX = 300;
-  const MONSTER_RUN_OFFSET_PX = 250;
+  const MONSTER_RUN_OFFSET_PX = 280;
   const PLAYER_Y_OFFSET = 0;
   const MONSTER_Y_OFFSET = 115;
   
@@ -212,10 +212,17 @@ function BattleScreen({ task, gameState, onExit, onComplete }) {
       ...playerAttackSprites.map((sprite) => getAttackDuration(sprite))
     );
     const monsterAttackDuration = monsterFrames * FRAME_DURATION_MS;
-    const monsterWalkDuration = monsterWalkFrames * FRAME_DURATION_MS;
+    const monsterWalkFrameDuration = monster.walkFrameDurationMs || FRAME_DURATION_MS;
+    const monsterWalkDuration = monsterWalkFrames * monsterWalkFrameDuration;
     const monsterReturnDuration = monsterWalkDuration;
     const playerReturnDuration = runDuration;
     const monsterAttackStartDelay = runDuration + maxAttackDuration + playerReturnDuration + ATTACK_DELAY_MS;
+    const monsterCycleDuration =
+      monsterAttackStartDelay +
+      monsterWalkDuration +
+      monsterAttackDuration +
+      monsterReturnDuration +
+      200;
 
     const startCycle = (startTime) => {
       const attackPool = [
@@ -245,10 +252,7 @@ function BattleScreen({ task, gameState, onExit, onComplete }) {
     startCycle(performance.now());
     const intervalId = setInterval(
       () => startCycle(performance.now()),
-      Math.max(
-        ATTACK_COOLDOWN_MS,
-        monsterAttackStartDelay + monsterAttackDuration + 400
-      )
+      Math.max(ATTACK_COOLDOWN_MS, monsterCycleDuration)
     );
 
     let animationId;
@@ -325,8 +329,13 @@ function BattleScreen({ task, gameState, onExit, onComplete }) {
         ? monsterShieldSprite
         : (monsterIdleSprite || monsterAttackSprite);
       const monsterIdleFrames = getFrameCount(monsterIdleSheet);
-      const monsterFrame = isMonsterWalking
-        ? Math.floor(monsterElapsed / FRAME_DURATION_MS) % monsterWalkFrames
+      const monsterWalkFrame = isMonsterWalking
+        ? Math.floor(monsterElapsed / monsterWalkFrameDuration) % monsterWalkFrames
+        : isMonsterReturning
+          ? Math.floor((monsterElapsed - monsterWalkDuration - monsterAttackDuration) / monsterWalkFrameDuration) % monsterWalkFrames
+          : 0;
+      const monsterFrame = isMonsterWalking || isMonsterReturning
+        ? monsterWalkFrame
         : isMonsterAttacking
           ? Math.floor((monsterElapsed - monsterWalkDuration) / FRAME_DURATION_MS) % monsterFrames
           : showMonsterHit
@@ -363,7 +372,7 @@ function BattleScreen({ task, gameState, onExit, onComplete }) {
       }
       drawFrame(
         monsterCanvas,
-        isMonsterWalking
+        isMonsterWalking || isMonsterReturning
           ? (monsterWalkSprite || monsterIdleSprite || monsterAttackSprite)
           : isMonsterAttacking
             ? monsterAttackSprite

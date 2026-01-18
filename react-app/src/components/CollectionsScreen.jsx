@@ -1,48 +1,42 @@
 import { useState } from 'react';
-import { AVATARS } from '../data/constants';
+import { DUNGEON_ROOMS, MONSTERS } from '../data/constants';
 
 function CollectionsScreen({ gameState, onBack }) {
   const { player } = gameState;
-  const currentAvatar = AVATARS[player.currentAvatar] || AVATARS.knight_1;
-  const currentAvatarBasePath = currentAvatar.homeBasePath || currentAvatar.basePath;
-  const avatarIconSprite = 'Protect.png';
-  const [showCompletedDetails, setShowCompletedDetails] = useState(false);
+  const [activeCategory, setActiveCategory] = useState('monsters');
 
-  const handleAvatarClick = (avatarId) => {
-    const avatar = AVATARS[avatarId];
-    
-    if (player.unlockedAvatars.includes(avatarId)) {
-      // Equip
-      gameState.setCurrentAvatar(avatarId);
-    } else if (player.coins >= avatar.cost) {
-      // Buy and equip
-      const result = gameState.unlockAvatar(avatarId, avatar.cost);
-      if (result.success) {
-        gameState.setCurrentAvatar(avatarId);
-      }
-    }
+  const heroCollectibles = [
+    { id: 'knight-1', name: 'Knight I', src: '/assets/characters/knight-character/Knight_1/Idle.png' },
+    { id: 'knight-2', name: 'Knight II', src: '/assets/characters/knight-character/Knight_2/Idle.png' },
+    { id: 'knight-3', name: 'Knight III', src: '/assets/characters/knight-character/Knight_3/Idle.png' },
+    { id: 'wizard', name: 'Wizard', src: '/assets/characters/wizard/Idle.png' },
+    { id: 'king', name: 'King', src: '/assets/characters/medieval-king-01/Idle.png' },
+  ];
+
+  const categoryConfig = {
+    monsters: {
+      label: 'Monsters',
+      items: Object.values(MONSTERS).map((monster) => ({
+        id: monster.id,
+        name: monster.name,
+        src: `${monster.basePath}/${monster.idleSprite}`,
+      })),
+    },
+    dungeons: {
+      label: 'Dungeons',
+      items: DUNGEON_ROOMS.map((room, index) => ({
+        id: `dungeon-${index}`,
+        name: `Dungeon ${index + 1}`,
+        src: room,
+      })),
+    },
+    heroes: {
+      label: 'Heroes',
+      items: heroCollectibles,
+    },
   };
 
-  const formatTime = (ms) => {
-    const hours = Math.floor(ms / 3600000);
-    const mins = Math.floor((ms % 3600000) / 60000);
-    return hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
-  };
-
-  const formatTimeRemaining = (ms) => {
-    if (ms === null || ms === undefined) return 'No deadline';
-    if (ms < 0) return 'Completed late';
-    
-    const hours = Math.floor(ms / 3600000);
-    const mins = Math.floor((ms % 3600000) / 60000);
-    const days = Math.floor(hours / 24);
-    
-    if (days > 0) return `${days}d ${hours % 24}h early`;
-    if (hours > 0) return `${hours}h ${mins}m early`;
-    return `${mins}m early`;
-  };
-
-  const completedTasks = player.completedTasks || [];
+  const activeItems = categoryConfig[activeCategory].items;
 
   return (
     <div className="screen collections-screen">
@@ -58,112 +52,33 @@ function CollectionsScreen({ gameState, onBack }) {
           </div>
         </header>
 
-        <div className="collections-content">
-          <div className="current-avatar-section">
-            <h2>Current Avatar</h2>
-            <div className="current-avatar-display">
-              <div className="avatar-preview-frame">
-                <img
-                  className="avatar-preview"
-                  src={`${currentAvatarBasePath}/${avatarIconSprite}`}
-                  alt={currentAvatar.name}
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="avatar-grid-section">
-            <h2>Available Avatars</h2>
-            <div className="avatar-grid">
-              {Object.values(AVATARS).map((avatar) => {
-                const isUnlocked = player.unlockedAvatars.includes(avatar.id);
-                const isSelected = player.currentAvatar === avatar.id;
-                const canAfford = player.coins >= avatar.cost;
-                const avatarBasePath = avatar.homeBasePath || avatar.basePath;
-
-                return (
-                  <div
-                    key={avatar.id}
-                    className={`avatar-card ${isSelected ? 'selected' : ''} ${!isUnlocked ? 'locked' : ''}`}
-                    onClick={() => handleAvatarClick(avatar.id)}
-                    style={{ cursor: isUnlocked || canAfford ? 'pointer' : 'not-allowed' }}
-                  >
-                    <div className="avatar-card-frame">
-                      <img
-                        className="avatar-card-img"
-                      src={`${avatarBasePath}/${avatarIconSprite}`}
-                        alt={avatar.name}
-                      />
-                    </div>
-                    <div className="avatar-card-name">{avatar.name}</div>
-                    <div className="avatar-card-cost">
-                      {isUnlocked ? (
-                        isSelected ? '✓ Equipped' : 'Click to equip'
-                      ) : (
-                        <>
-                          <span className="coin-icon">🪙</span> {avatar.cost}
-                        </>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="stats-section">
-            <h2>Stats</h2>
-            <div className="stats-grid">
-              <div 
-                className={`stat-card clickable ${showCompletedDetails ? 'active' : ''}`}
-                onClick={() => setShowCompletedDetails(!showCompletedDetails)}
+        <div className="collections-content collections-layout">
+          <nav className="collections-sidebar">
+            {Object.entries(categoryConfig).map(([key, config]) => (
+              <button
+                key={key}
+                className={`collections-nav-btn ${activeCategory === key ? 'active' : ''}`}
+                onClick={() => setActiveCategory(key)}
+                type="button"
               >
-                <div className="stat-value">{player.totalTasksCompleted}</div>
-                <div className="stat-label">Quests Completed</div>
-                <div className="stat-hint">(Click for details)</div>
-              </div>
-              <div className="stat-card">
-                <div className="stat-value">{formatTime(player.totalTimeWorked)}</div>
-                <div className="stat-label">Time Worked</div>
-              </div>
-              <div className="stat-card">
-                <div className="stat-value">{player.coins}</div>
-                <div className="stat-label">Total Coins</div>
-              </div>
-            </div>
+                {config.label}
+              </button>
+            ))}
+          </nav>
 
-            {showCompletedDetails && completedTasks.length > 0 && (
-              <div className="completed-tasks-details">
-                <h3>Completed Quest History</h3>
-                <div className="completed-tasks-list">
-                  {completedTasks.slice().reverse().map((task, index) => (
-                    <div key={task.id || index} className="completed-task-item">
-                      <div className="completed-task-name">{task.name}</div>
-                      <div className="completed-task-meta">
-                        <span className="meta-item">
-                          <span className="meta-icon">⏱</span>
-                          Est: {task.timeEstimate}min
-                        </span>
-                        <span className="meta-item">
-                          <span className="meta-icon">⏳</span>
-                          {formatTimeRemaining(task.timeRemainingBeforeDeadline)}
-                        </span>
-                        <span className={`priority-badge ${task.priority}`}>
-                          {task.priority?.toUpperCase()}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
+          <section className={`collections-gallery ${activeCategory}`}>
+            <h2>{categoryConfig[activeCategory].label}</h2>
+            <div className={`collections-grid ${activeCategory}`}>
+              {activeItems.map((item) => (
+                <div key={item.id} className={`collections-card ${activeCategory}-card`}>
+                  <div className="collections-card-frame">
+                    <img className="collections-card-img" src={item.src} alt={item.name} />
+                  </div>
+                  <div className="collections-card-name">{item.name}</div>
                 </div>
-              </div>
-            )}
-
-            {showCompletedDetails && completedTasks.length === 0 && (
-              <div className="no-completed-tasks">
-                <p>No completed quests yet. Start your adventure!</p>
-              </div>
-            )}
-          </div>
+              ))}
+            </div>
+          </section>
         </div>
       </div>
     </div>
