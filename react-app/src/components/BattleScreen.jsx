@@ -41,15 +41,15 @@ function BattleScreen({ task, gameState, onExit, onComplete }) {
     (phase === 'break' ? breakMinutes : studyMinutes) * 60 * 1000;
   const avatar = AVATARS[gameState.player.currentAvatar] || AVATARS.knight_1;
   const monster = MONSTERS[task?.monsterType] || MONSTERS.goblin;
-  const PLAYER_SIZE = 300;
-  const MONSTER_SIZE = 350;
+  const PLAYER_SIZE = 450;
+  const MONSTER_SIZE = 550;
   const ATTACK_COOLDOWN_MS = 5000;
   const FRAME_DURATION_MS = 120;
   const ATTACK_DELAY_MS = 200;
-  const RUN_OFFSET_PX = 300;
-  const MONSTER_RUN_OFFSET_PX = 280;
+  const RUN_OFFSET_PX = 500;
+  const MONSTER_RUN_OFFSET_PX = 450;
   const PLAYER_Y_OFFSET = 0;
-  const MONSTER_Y_OFFSET = 115;
+  const MONSTER_Y_OFFSET = 175;
   
   // Get dungeon room from task or use first one as default
   const dungeonRoom = task?.dungeonRoom || DUNGEON_ROOMS[0];
