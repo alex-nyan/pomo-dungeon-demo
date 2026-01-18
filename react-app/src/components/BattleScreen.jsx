@@ -11,10 +11,14 @@ function BattleScreen({ task, gameState, onExit, onComplete }) {
   const [playerRunSprite, setPlayerRunSprite] = useState(null);
   const [playerAttackSprites, setPlayerAttackSprites] = useState([]);
   const [playerDefendSprite, setPlayerDefendSprite] = useState(null);
+  const [playerHurtSprite, setPlayerHurtSprite] = useState(null);
+  const [playerRunAttackSprite, setPlayerRunAttackSprite] = useState(null);
+  const [playerJumpSprite, setPlayerJumpSprite] = useState(null);
   const [monsterIdleSprite, setMonsterIdleSprite] = useState(null);
   const [monsterAttackSprite, setMonsterAttackSprite] = useState(null);
   const [monsterHitSprite, setMonsterHitSprite] = useState(null);
   const [monsterWalkSprite, setMonsterWalkSprite] = useState(null);
+  const [monsterShieldSprite, setMonsterShieldSprite] = useState(null);
   const [phase, setPhase] = useState('study');
   
   const startTimeRef = useRef(performance.now() - (task?.timeSpent || 0));
@@ -26,6 +30,9 @@ function BattleScreen({ task, gameState, onExit, onComplete }) {
   const playerAttackStartRef = useRef(0);
   const playerAttackIndexRef = useRef(0);
   const monsterAttackStartRef = useRef(0);
+  const playerComboRef = useRef({ sequence: [], durations: [], totalDuration: 0 });
+  const monsterAttackToggleRef = useRef(false);
+  const lastMonsterAttackStartRef = useRef(null);
 
   const isPomodoro = Boolean(task?.isPomodoro);
   const studyMinutes = task?.timeEstimate || 25;
@@ -42,7 +49,7 @@ function BattleScreen({ task, gameState, onExit, onComplete }) {
   const RUN_OFFSET_PX = 300;
   const MONSTER_RUN_OFFSET_PX = 250;
   const PLAYER_Y_OFFSET = 0;
-  const MONSTER_Y_OFFSET = 120;
+  const MONSTER_Y_OFFSET = 115;
   
   // Get dungeon room from task or use first one as default
   const dungeonRoom = task?.dungeonRoom || DUNGEON_ROOMS[0];
@@ -92,16 +99,27 @@ function BattleScreen({ task, gameState, onExit, onComplete }) {
     img.onload = () => setter(img);
   };
 
+  const loadOptionalImage = (src, setter) => {
+    const img = new Image();
+    img.src = src;
+    img.onload = () => setter(img);
+    img.onerror = () => setter(null);
+  };
+
   const monsterAttackSpriteName = monster.attackSprite || monster.sprite;
   const monsterIdleSpriteName = monster.idleSprite || monsterAttackSpriteName;
   const monsterHitSpriteName = monster.hitSprite || monsterAttackSpriteName;
   const monsterWalkSpriteName = monster.walkSprite || monsterIdleSpriteName;
+  const monsterShieldSpriteName = monster.shieldSprite || 'Shield.png';
 
   // Load player sprites
   useEffect(() => {
     loadImage(`${avatar.basePath}/Idle.png`, setPlayerIdleSprite);
     loadImage(`${avatar.basePath}/Run.png`, setPlayerRunSprite);
     loadImage(`${avatar.basePath}/Defend.png`, setPlayerDefendSprite);
+    loadOptionalImage(`${avatar.basePath}/Hurt.png`, setPlayerHurtSprite);
+    loadOptionalImage(`${avatar.basePath}/Run+Attack.png`, setPlayerRunAttackSprite);
+    loadOptionalImage(`${avatar.basePath}/Jump.png`, setPlayerJumpSprite);
     Promise.all([
       `${avatar.basePath}/Attack 1.png`,
       `${avatar.basePath}/Attack 2.png`,
@@ -123,7 +141,15 @@ function BattleScreen({ task, gameState, onExit, onComplete }) {
     loadImage(`${monster.basePath}/${monsterIdleSpriteName}`, setMonsterIdleSprite);
     loadImage(`${monster.basePath}/${monsterHitSpriteName}`, setMonsterHitSprite);
     loadImage(`${monster.basePath}/${monsterWalkSpriteName}`, setMonsterWalkSprite);
-  }, [monster.basePath, monsterAttackSpriteName, monsterIdleSpriteName, monsterHitSpriteName, monsterWalkSpriteName]);
+    loadOptionalImage(`${monster.basePath}/${monsterShieldSpriteName}`, setMonsterShieldSprite);
+  }, [
+    monster.basePath,
+    monsterAttackSpriteName,
+    monsterIdleSpriteName,
+    monsterHitSpriteName,
+    monsterWalkSpriteName,
+    monsterShieldSpriteName,
+  ]);
 
   const getFrameCount = (img) => {
     if (!img) return 1;
@@ -192,12 +218,27 @@ function BattleScreen({ task, gameState, onExit, onComplete }) {
     const monsterAttackStartDelay = runDuration + maxAttackDuration + playerReturnDuration + ATTACK_DELAY_MS;
 
     const startCycle = (startTime) => {
-      playerAttackIndexRef.current = (playerAttackIndexRef.current + 1) % playerAttackSprites.length;
+      const attackPool = [
+        ...playerAttackSprites,
+        ...(playerRunAttackSprite ? [playerRunAttackSprite] : []),
+        ...(playerJumpSprite ? [playerJumpSprite] : []),
+      ];
+      const comboRoll = Math.random();
+      const comboLength = comboRoll < 0.2 ? 3 : comboRoll < 0.5 ? 2 : 1;
+      const sequence = [];
+      const durations = [];
+      const startIndex = playerAttackIndexRef.current % attackPool.length;
+      for (let i = 0; i < comboLength; i += 1) {
+        const spriteIndex = (startIndex + i) % attackPool.length;
+        const sprite = attackPool[spriteIndex];
+        sequence.push(sprite);
+        durations.push(getAttackDuration(sprite));
+      }
+      const totalDuration = durations.reduce((sum, value) => sum + value, 0);
+      playerAttackIndexRef.current = (startIndex + comboLength) % attackPool.length;
+      playerComboRef.current = { sequence, durations, totalDuration };
       playerAttackStartRef.current = startTime;
-      const attackDuration = getAttackDuration(
-        playerAttackSprites[playerAttackIndexRef.current % playerAttackSprites.length]
-      );
-      const attackStartDelay = runDuration + attackDuration + playerReturnDuration + ATTACK_DELAY_MS;
+      const attackStartDelay = runDuration + totalDuration + playerReturnDuration + ATTACK_DELAY_MS;
       monsterAttackStartRef.current = startTime + attackStartDelay;
     };
 
@@ -212,26 +253,45 @@ function BattleScreen({ task, gameState, onExit, onComplete }) {
 
     let animationId;
     const render = (now) => {
-      const attackSprite = playerAttackSprites[playerAttackIndexRef.current % playerAttackSprites.length];
-      const playerAttackDuration = getAttackDuration(attackSprite);
+      const comboData = playerComboRef.current;
+      const fallbackAttackSprite = playerAttackSprites[playerAttackIndexRef.current % playerAttackSprites.length];
+      const comboSprites = comboData.sequence.length > 0 ? comboData.sequence : [fallbackAttackSprite];
+      const comboDurations = comboData.durations.length > 0 ? comboData.durations : [
+        getAttackDuration(comboSprites[0]),
+      ];
+      const comboTotalDuration = comboData.totalDuration || comboDurations.reduce((sum, value) => sum + value, 0);
       const playerElapsed = now - playerAttackStartRef.current;
       const isPlayerRunningOut = playerElapsed >= 0 && playerElapsed < runDuration;
       const isPlayerAttacking =
-        playerElapsed >= runDuration && playerElapsed < runDuration + playerAttackDuration;
+        playerElapsed >= runDuration && playerElapsed < runDuration + comboTotalDuration;
       const isPlayerReturning =
-        playerElapsed >= runDuration + playerAttackDuration &&
-        playerElapsed < runDuration + playerAttackDuration + playerReturnDuration;
+        playerElapsed >= runDuration + comboTotalDuration &&
+        playerElapsed < runDuration + comboTotalDuration + playerReturnDuration;
+
+      let activeAttackSprite = comboSprites[0];
+      let attackFrameIndex = 0;
+      if (isPlayerAttacking) {
+        let remaining = playerElapsed - runDuration;
+        for (let i = 0; i < comboSprites.length; i += 1) {
+          if (remaining < comboDurations[i]) {
+            activeAttackSprite = comboSprites[i];
+            attackFrameIndex = Math.floor(remaining / FRAME_DURATION_MS) % getFrameCount(activeAttackSprite);
+            break;
+          }
+          remaining -= comboDurations[i];
+        }
+      }
 
       const playerFrame = isPlayerRunningOut
         ? Math.floor(playerElapsed / FRAME_DURATION_MS) % runFrames
         : isPlayerAttacking
-          ? Math.floor((playerElapsed - runDuration) / FRAME_DURATION_MS) % getFrameCount(attackSprite)
+          ? attackFrameIndex
           : isPlayerReturning
-            ? Math.floor((playerElapsed - runDuration - playerAttackDuration) / FRAME_DURATION_MS) % runFrames
+            ? Math.floor((playerElapsed - runDuration - comboTotalDuration) / FRAME_DURATION_MS) % runFrames
             : getIdleFrame(now, playerIdleSprite);
 
       const playerSheet = isPlayerAttacking
-        ? attackSprite
+        ? activeAttackSprite
         : isPlayerRunningOut || isPlayerReturning
           ? playerRunSprite
           : playerIdleSprite;
@@ -240,7 +300,7 @@ function BattleScreen({ task, gameState, onExit, onComplete }) {
         const runProgress = isPlayerRunningOut
           ? Math.min(1, playerElapsed / runDuration)
           : isPlayerReturning
-            ? Math.max(0, 1 - (playerElapsed - runDuration - playerAttackDuration) / playerReturnDuration)
+            ? Math.max(0, 1 - (playerElapsed - runDuration - comboTotalDuration) / playerReturnDuration)
             : isPlayerAttacking
               ? 1
               : 0;
@@ -257,16 +317,21 @@ function BattleScreen({ task, gameState, onExit, onComplete }) {
         ? Math.min(1, Math.max(0, (monsterElapsed - monsterWalkDuration) / monsterAttackDuration))
         : 0;
       const attackProgress = isPlayerAttacking
-        ? Math.min(1, Math.max(0, (playerElapsed - runDuration) / playerAttackDuration))
+        ? Math.min(1, Math.max(0, (playerElapsed - runDuration) / comboTotalDuration))
         : 0;
       const showMonsterHit = isPlayerAttacking && attackProgress >= 0.35;
+      const useShieldIdle = monsterShieldSprite && Math.floor(now / (FRAME_DURATION_MS * 8)) % 2 === 1;
+      const monsterIdleSheet = useShieldIdle
+        ? monsterShieldSprite
+        : (monsterIdleSprite || monsterAttackSprite);
+      const monsterIdleFrames = getFrameCount(monsterIdleSheet);
       const monsterFrame = isMonsterWalking
         ? Math.floor(monsterElapsed / FRAME_DURATION_MS) % monsterWalkFrames
         : isMonsterAttacking
           ? Math.floor((monsterElapsed - monsterWalkDuration) / FRAME_DURATION_MS) % monsterFrames
           : showMonsterHit
             ? Math.floor((playerElapsed - runDuration) / FRAME_DURATION_MS) % monsterHitFrames
-            : getIdleFrame(now, monsterIdleSprite || monsterAttackSprite);
+            : Math.floor(now / FRAME_DURATION_MS) % monsterIdleFrames;
 
       if (monsterSide) {
         const monsterProgress = isMonsterWalking
@@ -279,14 +344,20 @@ function BattleScreen({ task, gameState, onExit, onComplete }) {
         monsterSide.style.transform = `translateX(${-monsterProgress * MONSTER_RUN_OFFSET_PX}px)`;
       }
 
-      const isPlayerDefending = isMonsterAttacking && !isPlayerAttacking && !isPlayerRunningOut && !isPlayerReturning;
+      const isPlayerReacting = isMonsterAttacking && !isPlayerAttacking && !isPlayerRunningOut && !isPlayerReturning;
       const isPlayerHit = isMonsterAttacking && monsterAttackProgress >= 0.35 && monsterAttackProgress <= 0.6;
       if (playerCanvas) {
         playerCanvas.dataset.hit = isPlayerHit ? '1' : '0';
       }
-      if (isPlayerDefending) {
-        const defendFrame = Math.floor((monsterElapsed - monsterWalkDuration) / FRAME_DURATION_MS) % getFrameCount(playerDefendSprite);
-        drawFrame(playerCanvas, playerDefendSprite, defendFrame, PLAYER_SIZE);
+      if (isPlayerReacting) {
+        if (lastMonsterAttackStartRef.current !== monsterAttackStartRef.current) {
+          lastMonsterAttackStartRef.current = monsterAttackStartRef.current;
+          monsterAttackToggleRef.current = !monsterAttackToggleRef.current;
+        }
+        const useDefend = monsterAttackToggleRef.current || !playerHurtSprite;
+        const reactionSprite = useDefend ? playerDefendSprite : playerHurtSprite;
+        const reactionFrame = Math.floor((monsterElapsed - monsterWalkDuration) / FRAME_DURATION_MS) % getFrameCount(reactionSprite);
+        drawFrame(playerCanvas, reactionSprite, reactionFrame, PLAYER_SIZE);
       } else {
         drawFrame(playerCanvas, playerSheet, playerFrame, PLAYER_SIZE);
       }
@@ -298,7 +369,7 @@ function BattleScreen({ task, gameState, onExit, onComplete }) {
             ? monsterAttackSprite
             : showMonsterHit
               ? (monsterHitSprite || monsterAttackSprite)
-              : (monsterIdleSprite || monsterAttackSprite),
+              : monsterIdleSheet,
         monsterFrame,
         MONSTER_SIZE
       );
@@ -316,10 +387,14 @@ function BattleScreen({ task, gameState, onExit, onComplete }) {
     playerRunSprite,
     playerAttackSprites,
     playerDefendSprite,
+    playerHurtSprite,
+    playerRunAttackSprite,
+    playerJumpSprite,
     monsterIdleSprite,
     monsterAttackSprite,
     monsterHitSprite,
     monsterWalkSprite,
+    monsterShieldSprite,
     paused,
     completed,
   ]);

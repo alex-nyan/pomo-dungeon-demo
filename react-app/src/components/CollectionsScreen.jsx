@@ -4,6 +4,8 @@ import { AVATARS } from '../data/constants';
 function CollectionsScreen({ gameState, onBack }) {
   const { player } = gameState;
   const currentAvatar = AVATARS[player.currentAvatar] || AVATARS.knight_1;
+  const currentAvatarBasePath = currentAvatar.homeBasePath || currentAvatar.basePath;
+  const avatarIconSprite = 'Protect.png';
   const [showCompletedDetails, setShowCompletedDetails] = useState(false);
 
   const handleAvatarClick = (avatarId) => {
@@ -49,7 +51,7 @@ function CollectionsScreen({ gameState, onBack }) {
           <button className="btn btn-back" onClick={onBack}>
             ← Back
           </button>
-          <h1>Collections</h1>
+          <h1>Collectibles</h1>
           <div className="coins-display">
             <span className="coin-icon">🪙</span>
             <span>{player.coins}</span>
@@ -60,11 +62,13 @@ function CollectionsScreen({ gameState, onBack }) {
           <div className="current-avatar-section">
             <h2>Current Avatar</h2>
             <div className="current-avatar-display">
-              <img
-                className="avatar-preview"
-                src={`${currentAvatar.basePath}/Idle.png`}
-                alt={currentAvatar.name}
-              />
+              <div className="avatar-preview-frame">
+                <img
+                  className="avatar-preview"
+                  src={`${currentAvatarBasePath}/${avatarIconSprite}`}
+                  alt={currentAvatar.name}
+                />
+              </div>
             </div>
           </div>
 
@@ -75,6 +79,7 @@ function CollectionsScreen({ gameState, onBack }) {
                 const isUnlocked = player.unlockedAvatars.includes(avatar.id);
                 const isSelected = player.currentAvatar === avatar.id;
                 const canAfford = player.coins >= avatar.cost;
+                const avatarBasePath = avatar.homeBasePath || avatar.basePath;
 
                 return (
                   <div
@@ -83,11 +88,13 @@ function CollectionsScreen({ gameState, onBack }) {
                     onClick={() => handleAvatarClick(avatar.id)}
                     style={{ cursor: isUnlocked || canAfford ? 'pointer' : 'not-allowed' }}
                   >
-                    <img
-                      className="avatar-card-img"
-                      src={`${avatar.basePath}/Idle.png`}
-                      alt={avatar.name}
-                    />
+                    <div className="avatar-card-frame">
+                      <img
+                        className="avatar-card-img"
+                      src={`${avatarBasePath}/${avatarIconSprite}`}
+                        alt={avatar.name}
+                      />
+                    </div>
                     <div className="avatar-card-name">{avatar.name}</div>
                     <div className="avatar-card-cost">
                       {isUnlocked ? (
