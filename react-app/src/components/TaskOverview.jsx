@@ -62,7 +62,7 @@ function TaskOverview({ gameState, onNavigate, onStartTask }) {
                   <div className="empty-scroll">
                     <p>No active quests</p>
                     <p className="empty-hint">Add a quest to begin your adventure!</p>
-                    <button className="btn btn-primary" onClick={() => setIsModalOpen(true)}>
+                    <button className="btn btn-add-quest" onClick={() => setIsModalOpen(true)}>
                       Add Quest
                     </button>
                   </div>
