@@ -59,6 +59,29 @@ body {
   flex-direction: column;
 }
 
+.home-screen.tutorial-active .home-navbar,
+.home-screen.tutorial-active .fullscreen-canvas-container {
+  opacity: 0.4;
+  transition: opacity 0.25s ease;
+}
+
+.home-screen.tutorial-active.tutorial-step-0 .fullscreen-canvas-container,
+.home-screen.tutorial-active.tutorial-step-1 .fullscreen-canvas-container {
+  opacity: 1;
+}
+
+.home-screen.tutorial-active.tutorial-step-2 .home-navbar,
+.home-screen.tutorial-active.tutorial-step-3 .home-navbar {
+  opacity: 1;
+}
+
+.tutorial-highlight {
+  opacity: 1 !important;
+  position: relative;
+  z-index: 6;
+  box-shadow: 0 0 18px rgba(124, 255, 200, 0.5);
+}
+
 .home-navbar {
   width: 100%;
   z-index: 5;
@@ -79,6 +102,137 @@ body {
   object-fit: cover;
   image-rendering: pixelated;
   image-rendering: crisp-edges;
+}
+
+.home-tutorial {
+  position: absolute;
+  left: 50%;
+  bottom: 64px;
+  transform: translateX(-50%);
+  z-index: 9;
+  width: min(520px, 92%);
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.home-tutorial.step-moon {
+  left: auto;
+  right: 24px;
+  top: 70px;
+  bottom: auto;
+  transform: none;
+  width: min(380px, 90%);
+  justify-content: flex-end;
+}
+
+.home-tutorial.step-streak {
+  left: auto;
+  right: 110px;
+  top: 70px;
+  bottom: auto;
+  transform: none;
+  width: min(360px, 88%);
+  justify-content: flex-end;
+}
+
+.home-tutorial.step-add-quest {
+  left: 24px;
+  right: auto;
+  top: 70px;
+  bottom: auto;
+  transform: none;
+  width: min(360px, 88%);
+  justify-content: flex-start;
+}
+
+.home-tutorial-card {
+  position: relative;
+  padding: 12px 16px 14px;
+  border: 1px solid rgba(124, 255, 200, 0.55);
+  border-radius: 12px;
+  background: rgba(8, 12, 22, 0.82);
+  color: #e6f8ee;
+  font-family: 'MedievalSharp', cursive;
+  text-align: center;
+  box-shadow: 0 10px 18px rgba(0, 0, 0, 0.45);
+  pointer-events: auto;
+}
+
+.home-tutorial-title {
+  color: #7cffc8;
+  font-size: 0.95rem;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.home-tutorial-body {
+  margin-top: 4px;
+  font-size: 0.95rem;
+}
+
+.home-tutorial-dismiss {
+  margin-top: 10px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(201, 162, 39, 0.6);
+  background: linear-gradient(180deg, #3d2a1a 0%, #2a1a0f 100%);
+  color: #f4e4bc;
+  font-family: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.home-tutorial-next {
+  margin-top: 10px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(124, 255, 200, 0.7);
+  background: rgba(10, 14, 26, 0.8);
+  color: #e6f8ee;
+  font-family: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.home-tutorial-next:hover {
+  background: rgba(16, 22, 36, 0.9);
+  border-color: rgba(124, 255, 200, 0.95);
+}
+
+.home-tutorial-dismiss:hover {
+  background: linear-gradient(180deg, #4d3a2a 0%, #3a2a1f 100%);
+  border-color: #c9a227;
+}
+
+.home-tutorial-arrow {
+  position: absolute;
+  left: 50%;
+  bottom: -8px;
+  width: 14px;
+  height: 14px;
+  transform: translateX(-50%) rotate(45deg);
+  background: rgba(8, 12, 22, 0.82);
+  border-right: 1px solid rgba(124, 255, 200, 0.55);
+  border-bottom: 1px solid rgba(124, 255, 200, 0.55);
+}
+
+.home-tutorial-arrow.arrow-right {
+  left: auto;
+  right: -8px;
+  top: 50%;
+  bottom: auto;
+  transform: translateY(-50%) rotate(45deg);
+}
+
+.home-tutorial-arrow.arrow-up {
+  left: 24px;
+  right: auto;
+  top: -8px;
+  bottom: auto;
+  transform: rotate(45deg);
+  border-right: 1px solid rgba(124, 255, 200, 0.55);
+  border-bottom: 1px solid rgba(124, 255, 200, 0.55);
 }
 
 .canvas-overlay-ui {
@@ -451,6 +605,30 @@ body {
   .canvas-overlay-ui .btn-medieval {
     margin-top: 12px;
     margin-left: 12px;
+  }
+
+  .home-tutorial {
+    bottom: 28px;
+  }
+
+  .home-tutorial.step-moon {
+    right: 12px;
+    top: 54px;
+  }
+
+  .home-tutorial.step-streak {
+    right: 12px;
+    top: 54px;
+  }
+
+  .home-tutorial.step-add-quest {
+    left: 12px;
+    top: 54px;
+  }
+
+  .home-tutorial-title,
+  .home-tutorial-body {
+    font-size: 0.85rem;
   }
 }
 

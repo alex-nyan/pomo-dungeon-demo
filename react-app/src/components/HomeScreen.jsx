@@ -16,10 +16,35 @@ function HomeScreen({ gameState, onNavigate }) {
   const [googleUser, setGoogleUser] = useLocalStorage('pomoDungeon_googleUser', null);
   const [streakDays] = useLocalStorage('pomoDungeon_streakDays', 0);
   const [authError, setAuthError] = useState('');
+  const [showTutorial, setShowTutorial] = useState(
+    () => !googleUser || localStorage.getItem('pomoDungeon_homeTutorialSeen') !== 'true'
+  );
+  const [tutorialStep, setTutorialStep] = useState(0);
+  const maxTutorialStep = 3;
   const googleInitRef = useRef(false);
   const tokenClientRef = useRef(null);
   const [isAuthMenuOpen, setIsAuthMenuOpen] = useState(false);
   const authMenuRef = useRef(null);
+  const dismissTutorial = () => {
+    if (googleUser) {
+      localStorage.setItem('pomoDungeon_homeTutorialSeen', 'true');
+    }
+    setShowTutorial(false);
+  };
+
+  useEffect(() => {
+    if (!googleUser) {
+      setShowTutorial(true);
+      return;
+    }
+    setShowTutorial(localStorage.getItem('pomoDungeon_homeTutorialSeen') !== 'true');
+  }, [googleUser]);
+
+  useEffect(() => {
+    if (showTutorial) {
+      setTutorialStep(0);
+    }
+  }, [showTutorial]);
   const getGoogleAuthHint = () => {
     const { protocol, hostname } = window.location;
     const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1';
@@ -423,13 +448,14 @@ function HomeScreen({ gameState, onNavigate }) {
       const gate = gateRef.current;
       const interactive = gate.hover || gate.opening || gate.openT > 0;
       const openEase = easeOutCubic(gate.openT);
-      const glowPulse = 0.6 + 0.4 * Math.sin(time * 7);
+      const hoverPulse = 0.6 + 0.4 * Math.sin(time * 7);
+      const idlePulse = mode === MODE.TASKS ? 0.35 + 0.25 * Math.sin(time * 2.2) : 0;
       const d = doorRect();
       const doorSlide = Math.floor(openEase * 18);
 
       // Outer glow (narrower oval)
-      if (interactive) {
-        ctx.globalAlpha = 0.08 + 0.08 * glowPulse + 0.1 * openEase;
+      if (interactive || idlePulse > 0) {
+        ctx.globalAlpha = 0.05 + 0.08 * hoverPulse + 0.1 * openEase + idlePulse * 0.08;
         ctx.fillStyle = mode === MODE.STOPWATCH ? '#ff2b4a' : '#7cffc8';
         ctx.beginPath();
         ctx.ellipse(gate.x + gate.w / 2, gate.y + gate.h * 0.62, 38, 28, 0, 0, Math.PI * 2);
@@ -741,19 +767,33 @@ function HomeScreen({ gameState, onNavigate }) {
   };
 
   return (
-    <div className="home-screen">
+    <div
+      className={`home-screen${
+        mode === MODE.TASKS && showTutorial ? ` tutorial-active tutorial-step-${tutorialStep}` : ''
+      }`}
+    >
       <div className="home-navbar">
         <div className="medieval-navbar">
-          <div className="navbar-section navbar-left">
+            <div className="navbar-section navbar-left">
             {mode === MODE.TASKS && (
-              <button className="btn-medieval btn-auth navbar-btn" onClick={() => setIsModalOpen(true)}>
-                + Add Quest
-              </button>
+                <button
+                  className={`btn-medieval btn-auth navbar-btn${
+                    showTutorial && tutorialStep === 3 ? ' tutorial-highlight' : ''
+                  }`}
+                  onClick={() => setIsModalOpen(true)}
+                >
+                  + Add Quest
+                </button>
             )}
           </div>
           <div className="navbar-section navbar-right">
             <div className="auth-panel navbar-auth" ref={authMenuRef}>
-              <div className="streak-badge" aria-label={`Streak: ${streakDays} days`}>
+              <div
+                className={`streak-badge${
+                  showTutorial && tutorialStep === 2 ? ' tutorial-highlight' : ''
+                }`}
+                aria-label={`Streak: ${streakDays} days`}
+              >
                 <svg className="streak-icon" viewBox="0 0 24 24" aria-hidden="true">
                   <path d="M12.6 2.4c.2 2-1 3.4-2.2 4.7-1.2 1.3-2.5 2.8-2.5 5.1 0 3 2.2 5.1 5 5.1s5-2.1 5-5.1c0-2.4-1.4-4-2.8-5.6-.5-.6-1.1-1.3-1.5-2.1-.6 1.1-.7 2.1-.9 2.9-.3 1.2-.6 2.3-2 3.3.2-1.8 1.1-3.2 1.9-4.3 1-1.4 1.8-2.6 1.9-4z" />
                 </svg>
@@ -839,6 +879,71 @@ function HomeScreen({ gameState, onNavigate }) {
           }}
           onClick={handleClick}
         />
+        {mode === MODE.TASKS && showTutorial && (
+          <div
+            className={`home-tutorial ${
+              tutorialStep === 1
+                ? 'step-moon'
+                : tutorialStep === 2
+                  ? 'step-streak'
+                  : tutorialStep === 3
+                    ? 'step-add-quest'
+                    : 'step-gate'
+            }`}
+            role="dialog"
+            aria-label="Home tutorial"
+          >
+            <div className="home-tutorial-card">
+              <div className="home-tutorial-title">
+                {tutorialStep === 1
+                  ? 'Switch modes'
+                  : tutorialStep === 2
+                    ? 'Daily streak'
+                    : tutorialStep === 3
+                      ? 'Add quests'
+                      : 'Start your first quest'}
+              </div>
+              <div className="home-tutorial-body">
+                {tutorialStep === 1
+                  ? 'Click the moon to toggle between quest and focus modes.'
+                  : tutorialStep === 2
+                    ? 'Your streak grows when you keep up daily focus sessions.'
+                    : tutorialStep === 3
+                      ? 'Use “+ Add Quest” to create new tasks before entering the gate.'
+                      : 'Click “+ Add Quest”, then tap the glowing gate to enter the quest board.'}
+              </div>
+              {tutorialStep === maxTutorialStep ? (
+                <button
+                  className="home-tutorial-dismiss"
+                  type="button"
+                  onClick={dismissTutorial}
+                  aria-label="Dismiss tutorial"
+                >
+                  Got it
+                </button>
+              ) : (
+                <button
+                  className="home-tutorial-next"
+                  type="button"
+                  onClick={() => setTutorialStep((step) => Math.min(maxTutorialStep, step + 1))}
+                  aria-label="Next tutorial step"
+                >
+                  Next
+                </button>
+              )}
+              <div
+                className={`home-tutorial-arrow ${
+                  tutorialStep === 1
+                    ? 'arrow-right'
+                    : tutorialStep === 2 || tutorialStep === 3
+                      ? 'arrow-up'
+                      : 'arrow-down'
+                }`}
+                aria-hidden="true"
+              />
+            </div>
+          </div>
+        )}
 
         <AddTaskModal
           isOpen={isModalOpen}
