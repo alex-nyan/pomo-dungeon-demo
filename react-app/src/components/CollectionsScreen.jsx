@@ -50,13 +50,11 @@ function CollectionsScreen({ gameState, onBack }) {
   const { player } = gameState;
   const [activeCategory, setActiveCategory] = useState('monsters');
 
-  // Heroes with frame counts
+  // Heroes with frame counts - paths match public/assets/ structure
   const heroCollectibles = [
-    { id: 'knight-1', name: 'Knight I', src: '/assets/characters/knight-character/Knight_1/Idle.png', frameCount: 4 },
-    { id: 'knight-2', name: 'Knight II', src: '/assets/characters/knight-character/Knight_2/Idle.png', frameCount: 4 },
-    { id: 'knight-3', name: 'Knight III', src: '/assets/characters/knight-character/Knight_3/Idle.png', frameCount: 4 },
-    { id: 'wizard', name: 'Wizard', src: '/assets/characters/wizard/Idle.png', frameCount: 6 },
-    { id: 'king', name: 'King', src: '/assets/characters/medieval-king-01/Idle.png', frameCount: 6 },
+    { id: 'knight-1', name: 'Knight I', src: '/assets/knight-character/Knight_1/Idle.png', frameCount: 4 },
+    { id: 'knight-2', name: 'Knight II', src: '/assets/knight-character/Knight_2/Idle.png', frameCount: 4 },
+    { id: 'knight-3', name: 'Knight III', src: '/assets/knight-character/Knight_3/Idle.png', frameCount: 4 },
   ];
 
   // Monster frame counts
