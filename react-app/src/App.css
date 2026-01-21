@@ -1205,20 +1205,65 @@ body {
 
 /* ======================= COLLECTIONS SCREEN ======================= */
 .collections-screen {
-  min-height: 100vh;
+  height: 100vh;
   background: radial-gradient(1200px 600px at 50% 0%, #152047, var(--bg));
   display: flex;
-  align-items: center;
-  justify-content: center;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.collections-screen .screen-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  flex-shrink: 0;
+  background: linear-gradient(180deg, #3d2a1a 0%, #24160b 100%);
+  border: none;
+  border-bottom: 2px solid #8b6914;
+  border-radius: 0;
+  color: #f4e4bc;
+  font-family: 'MedievalSharp', cursive;
+  box-shadow:
+    0 6px 20px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  padding: 14px 24px;
+}
+
+.collections-screen .screen-header h1 {
+  font-family: 'MedievalSharp', cursive;
+  letter-spacing: 1px;
+}
+
+.collections-screen .screen-header .btn-back {
+  font-family: 'MedievalSharp', cursive;
+  background: linear-gradient(180deg, #4a3a2a 0%, #3a2a1f 100%);
+  border: 2px solid #6b5a32;
+  color: #d4c4a8;
+}
+
+.collections-screen .screen-header .btn-back:hover {
+  border-color: #8b6914;
+  color: #f4e4bc;
+}
+
+.collections-screen .screen-header .coins-display {
+  gap: 8px;
+  padding: 6px 14px;
+  border-radius: 10px;
+  background: rgba(20, 12, 6, 0.6);
+  border: 1px solid rgba(139, 105, 20, 0.6);
+  color: #f4e4bc;
 }
 
 .collections-wrap {
+  flex: 1;
   width: 100%;
   max-width: 100%;
   margin: 0 auto;
   padding: 20px;
   display: grid;
   gap: 14px;
+  overflow-y: auto;
 }
 
 .collections-wrap .screen-header {
