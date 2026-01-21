@@ -128,48 +128,61 @@ function HomeScreen({ gameState, onNavigate }) {
     }
     setAuthError('');
 
-    if (!tokenClientRef.current) {
-      tokenClientRef.current = window.google.accounts.oauth2.initTokenClient({
-        client_id: clientId,
-        scope: 'profile email',
-        callback: async (tokenResponse) => {
-          if (!tokenResponse?.access_token) {
-            setAuthError('Google sign-in failed. Try again.');
-            return;
-          }
-          try {
-            const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-              headers: { Authorization: `Bearer ${tokenResponse.access_token}` },
-            });
-            if (!res.ok) throw new Error('Failed to fetch profile');
-            const data = await res.json();
-            setAuthError('');
-            setGoogleUser({
-              name: data.name,
-              email: data.email,
-              picture: data.picture,
-            });
-          } catch (error) {
-            setAuthError('Could not load Google profile.');
-          }
-        },
-        error_callback: (error) => {
-          const errorType = error?.type || error?.error || 'unknown';
-          setAuthError(`Google sign-in error (${errorType}). ${getGoogleAuthHint()}`);
-        },
-      });
+    if (googleUser?.email && window.google?.accounts?.oauth2?.revoke) {
+      window.google.accounts.oauth2.revoke(googleUser.email, () => {});
     }
-
-    tokenClientRef.current.requestAccessToken({ prompt: 'consent' });
-  };
-
-  const handleGoogleSignOut = () => {
     setGoogleUser(null);
-    setAuthError('');
-    setIsAuthMenuOpen(false);
+    tokenClientRef.current = window.google.accounts.oauth2.initTokenClient({
+      client_id: clientId,
+      scope: 'profile email',
+      callback: async (tokenResponse) => {
+        if (!tokenResponse?.access_token) {
+          setAuthError('Google sign-in failed. Try again.');
+          return;
+        }
+        try {
+          const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+            headers: { Authorization: `Bearer ${tokenResponse.access_token}` },
+          });
+          if (!res.ok) throw new Error('Failed to fetch profile');
+          const data = await res.json();
+          setAuthError('');
+          setGoogleUser({
+            name: data.name,
+            email: data.email,
+            picture: data.picture,
+            sub: data.sub,
+          });
+        } catch (error) {
+          setAuthError('Could not load Google profile.');
+        }
+      },
+      error_callback: (error) => {
+        const errorType = error?.type || error?.error || 'unknown';
+        setAuthError(`Google sign-in error (${errorType}). ${getGoogleAuthHint()}`);
+      },
+    });
+
     if (window.google?.accounts?.id) {
       window.google.accounts.id.disableAutoSelect();
     }
+    tokenClientRef.current.requestAccessToken({ prompt: 'consent select_account' });
+  };
+
+  const handleGoogleSignOut = () => {
+    if (googleUser?.email && window.google?.accounts?.oauth2?.revoke) {
+      window.google.accounts.oauth2.revoke(googleUser.email, () => {});
+    }
+    setGoogleUser(null);
+    setAuthError('');
+    setIsAuthMenuOpen(false);
+    localStorage.removeItem('pomoDungeon_player');
+    localStorage.removeItem('pomoDungeon_tasks');
+    localStorage.removeItem('pomoDungeon_googleUser');
+    if (window.google?.accounts?.id) {
+      window.google.accounts.id.disableAutoSelect();
+    }
+    window.location.reload();
   };
 
   useEffect(() => {
@@ -783,7 +796,10 @@ function HomeScreen({ gameState, onNavigate }) {
                       <button
                         className="auth-dropdown-item"
                         type="button"
-                        onClick={() => setIsAuthMenuOpen(false)}
+                        onClick={() => {
+                          setIsAuthMenuOpen(false);
+                          onNavigate(SCREENS.RECORDS);
+                        }}
                       >
                         Records
                       </button>

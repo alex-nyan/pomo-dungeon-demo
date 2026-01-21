@@ -1544,6 +1544,59 @@ body {
   opacity: 0.7;
 }
 
+.records-content {
+  display: grid;
+  gap: 24px;
+}
+
+.records-list {
+  display: grid;
+  gap: 12px;
+}
+
+.records-item {
+  background: linear-gradient(180deg, #3d2a1a 0%, #2a1a0f 100%);
+  border-radius: 12px;
+  padding: 14px 16px;
+  color: #f4e4bc;
+  border: 1px solid rgba(139, 105, 20, 0.7);
+}
+
+.records-title {
+  font-weight: 700;
+  margin-bottom: 6px;
+  color: #f2d28c;
+}
+
+.records-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 18px;
+  font-size: 13px;
+  color: #d9c59b;
+}
+
+.records-empty {
+  padding: 12px 0;
+  color: #5c4a32;
+}
+
+.records-user {
+  margin-bottom: 16px;
+  font-size: 13px;
+  color: #5c4a32;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  align-items: center;
+}
+
+.records-user-id {
+  font-size: 12px;
+  color: #7b6848;
+}
+
+
 /* Completed Tasks Details */
 .completed-tasks-details {
   margin-top: 20px;

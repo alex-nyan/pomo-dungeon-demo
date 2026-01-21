@@ -99,6 +99,7 @@ export const SCREENS = {
   TASKS: "tasks",
   BATTLE: "battle",
   COLLECTIONS: "collections",
+  RECORDS: "records",
 };
 
 // Mode names
