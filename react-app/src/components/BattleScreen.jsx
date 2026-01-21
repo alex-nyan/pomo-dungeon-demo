@@ -417,7 +417,9 @@ function BattleScreen({ task, gameState, onExit, onComplete }) {
       return;
     }
 
-    const result = gameState.completeTask(task.id);
+    const startedAt = task?.startedAt || new Date().toISOString();
+    gameState.updateTask(task.id, { timeSpent: elapsed, startedAt });
+    const result = gameState.completeTask(task.id, { timeSpentMs: elapsed, startedAt });
     setCoinsEarned(result?.coinsEarned || COIN_REWARDS[task.priority] || 20);
   };
 

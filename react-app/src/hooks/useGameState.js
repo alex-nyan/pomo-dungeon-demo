@@ -1,4 +1,6 @@
+import { useEffect, useRef } from 'react';
 import { useLocalStorage } from './useLocalStorage';
+import { getJson, postJson } from '../utils/api';
 import { PRIORITY, COIN_REWARDS, getRandomDungeonRoom, getMonsterForPriority } from '../data/constants';
 
 const STORAGE_KEYS = {
@@ -18,6 +20,42 @@ const createDefaultPlayer = () => ({
 export function useGameState() {
   const [player, setPlayer] = useLocalStorage(STORAGE_KEYS.PLAYER, createDefaultPlayer());
   const [tasks, setTasks] = useLocalStorage(STORAGE_KEYS.TASKS, []);
+  const [googleUser] = useLocalStorage('pomoDungeon_googleUser', null);
+  const prevUserIdRef = useRef(null);
+
+  useEffect(() => {
+    const userId = googleUser?.sub || googleUser?.email || null;
+    if (!userId) return;
+    if (prevUserIdRef.current && prevUserIdRef.current !== userId) {
+      localStorage.removeItem(STORAGE_KEYS.PLAYER);
+      localStorage.removeItem(STORAGE_KEYS.TASKS);
+      setPlayer(createDefaultPlayer());
+      setTasks([]);
+    }
+    prevUserIdRef.current = userId;
+  }, [googleUser?.sub, googleUser?.email, setPlayer, setTasks]);
+
+  useEffect(() => {
+    const userId = googleUser?.sub || googleUser?.email;
+    if (!userId) return undefined;
+    let isActive = true;
+
+    const loadTasks = async () => {
+      try {
+        const res = await getJson(`/api/tasks/${userId}`);
+        if (isActive && Array.isArray(res.tasks)) {
+          setTasks(res.tasks);
+        }
+      } catch (error) {
+        // Ignore load errors to keep local tasks usable
+      }
+    };
+
+    loadTasks();
+    return () => {
+      isActive = false;
+    };
+  }, [googleUser?.sub, googleUser?.email, setTasks]);
 
   // Create a new task
   const addTask = ({ name, timeEstimate, deadline, priority }) => {
@@ -36,28 +74,48 @@ export function useGameState() {
       timeSpent: 0,
     };
     setTasks((prev) => [...prev, newTask]);
+    if (googleUser?.sub || googleUser?.email) {
+      const userId = googleUser.sub || googleUser.email;
+      void postJson('/api/tasks/upsert', { userId, task: newTask }).catch(() => {});
+    }
     return newTask;
   };
 
   // Update a task
   const updateTask = (taskId, updates) => {
+    let updatedTask = null;
     setTasks((prev) =>
-      prev.map((task) => (task.id === taskId ? { ...task, ...updates } : task))
+      prev.map((task) => {
+        if (task.id !== taskId) return task;
+        updatedTask = { ...task, ...updates };
+        return updatedTask;
+      })
     );
+    if ((googleUser?.sub || googleUser?.email) && updatedTask) {
+      const userId = googleUser.sub || googleUser.email;
+      void postJson('/api/tasks/upsert', { userId, task: updatedTask }).catch(() => {});
+    }
   };
 
   // Delete a task
   const deleteTask = (taskId) => {
     setTasks((prev) => prev.filter((task) => task.id !== taskId));
+    if (googleUser?.sub || googleUser?.email) {
+      const userId = googleUser.sub || googleUser.email;
+      void postJson('/api/tasks/delete', { userId, taskId }).catch(() => {});
+    }
   };
 
   // Complete a task and award coins
-  const completeTask = (taskId) => {
+  const completeTask = (taskId, meta = {}) => {
     const task = tasks.find((t) => t.id === taskId);
     if (!task || task.completed) return null;
 
     const coinsEarned = COIN_REWARDS[task.priority] || 20;
     const completedAt = new Date().toISOString();
+    const startedAt = meta.startedAt || task.startedAt || task.createdAt || completedAt;
+    const timeSpentMs = Number.isFinite(meta.timeSpentMs) ? meta.timeSpentMs : task.timeSpent || 0;
+    const durationSeconds = Math.max(0, Math.floor(timeSpentMs / 1000));
     
     // Calculate time remaining before deadline
     let timeRemainingBeforeDeadline = null;
@@ -79,7 +137,7 @@ export function useGameState() {
       ...prev,
       coins: prev.coins + coinsEarned,
       totalTasksCompleted: prev.totalTasksCompleted + 1,
-      totalTimeWorked: prev.totalTimeWorked + (task.timeSpent || 0),
+      totalTimeWorked: prev.totalTimeWorked + timeSpentMs,
       completedTasks: [
         ...(prev.completedTasks || []),
         {
@@ -93,6 +151,29 @@ export function useGameState() {
         }
       ],
     }));
+
+    if (googleUser?.sub || googleUser?.email) {
+      const userId = googleUser.sub || googleUser.email;
+      const updatedTask = {
+        ...task,
+        completed: true,
+        completedAt,
+        timeSpent: timeSpentMs,
+        startedAt,
+      };
+      void postJson('/api/tasks/upsert', { userId, task: updatedTask }).catch(() => {});
+      const payload = {
+        userId,
+        questId: task.id,
+        name: task.name,
+        priority: task.priority,
+        startedAt,
+        finishedAt: completedAt,
+        durationSeconds,
+        timeSpentMs,
+      };
+      void postJson('/api/quests/complete', payload).catch(() => {});
+    }
 
     return { task, coinsEarned };
   };
